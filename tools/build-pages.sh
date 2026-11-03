@@ -7,23 +7,40 @@ cd "$(dirname "$0")/.."
 
 BASE="https://ciprio.ai"
 
-for src in src/pages/*.html src/pages/blog/*.html; do
+for src in src/pages/*.html src/pages/blog/*.html src/pages/fr/*.html src/pages/fr/blog/*.html; do
   [ -f "$src" ] || continue
+  # langue de la page (src/pages/fr/ = français) et adresse de la même page dans l'autre langue
+  rel=${src#src/pages/}
+  if [ "${rel#fr/}" != "$rel" ]; then
+    lang=fr; sfx=".fr"; en_rel=${rel#fr/}
+  else
+    lang=en; sfx=""; en_rel=$rel
+  fi
   meta=$(sed '/^---$/q' "$src" | sed '$d')
   body=$(sed '1,/^---$/d' "$src")
   get() { printf '%s\n' "$meta" | sed -n "s/^$1=//p" | head -1; }
   out=$(get OUT); title=$(get TITLE); desc=$(get DESC); path=$(get PATH); cur=$(get NAV); ogtype=$(get OGTYPE); chrome=$(get CHROME)
   extra=$(printf '%s\n' "$meta" | sed -n 's/^EXTRA=//p')
   [ -n "$ogtype" ] || ogtype="website"
+  # une page sans équivalent dans l'autre langue renvoie vers l'accueil de cette langue
+  if [ "$lang" = fr ]; then
+    fr_path=$path; en_path=${path#/fr}; [ -n "$en_path" ] || en_path="/"
+    [ -f "src/pages/$en_rel" ] || en_path="/"
+  else
+    en_path=$path; fr_path="/fr$path"
+    [ -f "src/pages/fr/$rel" ] || fr_path="/fr"
+  fi
 
   fill() {
-    awk -v TITLE="$title" -v DESC="$desc" -v BASE="$BASE" -v PATHV="$path" -v OGTYPE="$ogtype" -v EXTRA="$extra" -v CUR="$cur" '
+    awk -v TITLE="$title" -v DESC="$desc" -v BASE="$BASE" -v PATHV="$path" -v OGTYPE="$ogtype" -v EXTRA="$extra" -v CUR="$cur" \
+        -v LANG="$lang" -v ENP="$en_path" -v FRP="$fr_path" '
       function rep(s, k, v,   i) { while ((i = index(s, k)) > 0) s = substr(s, 1, i - 1) v substr(s, i + length(k)); return s }
       {
         line = $0
         line = rep(line, "{{TITLE}}", TITLE); line = rep(line, "{{DESC}}", DESC)
         line = rep(line, "{{BASE}}", BASE); line = rep(line, "{{PATH}}", PATHV)
         line = rep(line, "{{OGTYPE}}", OGTYPE); line = rep(line, "{{EXTRA}}", EXTRA)
+        line = rep(line, "{{LANG}}", LANG); line = rep(line, "{{EN_PATH}}", ENP); line = rep(line, "{{FR_PATH}}", FRP)
         while (match(line, /\{\{CUR_[a-z]+\}\}/)) {
           key = substr(line, RSTART + 6, RLENGTH - 8)
           line = substr(line, 1, RSTART - 1) (key == CUR ? " aria-current=\"page\"" : "") substr(line, RSTART + RLENGTH)
@@ -35,9 +52,9 @@ for src in src/pages/*.html src/pages/blog/*.html; do
   mkdir -p "$(dirname "$out")"
   {
     fill src/partials/head.html
-    [ "$chrome" = "none" ] || fill src/partials/nav.html
+    [ "$chrome" = "none" ] || fill "src/partials/nav$sfx.html"
     printf '%s\n' "$body"
-    [ "$chrome" = "none" ] || fill src/partials/footer.html
+    [ "$chrome" = "none" ] || fill "src/partials/footer$sfx.html"
     printf '</body>\n</html>\n'
   } > "$out"
   echo "built $out"

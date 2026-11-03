@@ -53,6 +53,11 @@ a{color:inherit}
 .nav ul a:hover,.nav ul a[aria-current="page"]{color:var(--ink)}
 .nav ul a[aria-current="page"]{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:1px}
 .nav .btn{height:36px;padding:0 14px;font-size:.86rem}
+.nav-end{display:flex;align-items:center;gap:18px}
+.lang{display:flex;gap:2px;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em}
+.lang a{padding:4px 5px;text-decoration:none;color:var(--muted)}
+.lang a:hover,.lang a[aria-current="true"]{color:var(--ink)}
+.lang a+a::before{content:"·";margin-right:7px;color:var(--line)}
 @media (max-width:900px){.nav .wrap{flex-wrap:wrap;height:auto;padding-block:10px;row-gap:6px}.nav ul{order:3;width:100%;gap:22px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none;white-space:nowrap}.nav ul::-webkit-scrollbar{display:none}}
 
 /* en-tête de page */

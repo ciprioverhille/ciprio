@@ -1,0 +1,1772 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Ciprio</title>
+<meta name="description" content="Ciprio compare la vidéo du match entier avec vos consignes d'avant-match et vous rend un rapport tactique, pour l'équipe et pour chaque joueur.">
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="canonical" href="https://ciprio.ai/fr">
+<link rel="alternate" hreflang="en" href="https://ciprio.ai/">
+<link rel="alternate" hreflang="fr" href="https://ciprio.ai/fr">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ciprio">
+<meta property="og:title" content="Ciprio">
+<meta property="og:description" content="Votre plan de jeu, mesuré sur le terrain. L'analyse vidéo pour les staffs de football.">
+<meta property="og:url" content="https://ciprio.ai/fr">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sobre et technique. Grille à filets fins, typographie neutre, un seul visuel produit (terrain + plan de jeu) en panneau sombre. */
+:root{
+  --bg:#fafaf9;
+  --surface:#ffffff;
+  --ink:#0b0d0c;
+  --ink-2:#3a403d;
+  --muted:#6b736f;
+  --line:#e5e7e5;
+  --accent:#12a150;
+  --dark:#0c100e;
+  --dark-2:#141a17;
+  --dark-line:rgba(255,255,255,.1);
+  --dark-muted:#8b948f;
+  --ok:#12a150;
+  --mid:#d49a00;
+  --bad:#e5484d;
+  --f-sans:"Geist","Helvetica Neue",Arial,sans-serif;
+  --f-mono:"Geist Mono",ui-monospace,Consolas,monospace;
+  --wrap:1200px;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--f-sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased}
+img,svg{max-width:100%}
+[hidden]{display:none!important}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+.wrap{max-width:var(--wrap);margin-inline:auto;padding-left:max(24px,env(safe-area-inset-left,0px));padding-right:max(24px,env(safe-area-inset-right,0px))}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.03em;line-height:1.05;text-wrap:balance}
+h2{font-size:clamp(2rem,4vw,3rem)}
+h3{font-size:1.05rem;letter-spacing:-.01em;line-height:1.3}
+p{margin:0}
+a{color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.label{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lead{font-size:1.15rem;color:var(--ink-2);line-height:1.55;max-width:54ch}
+section{padding-block:clamp(80px,10vw,128px);border-top:1px solid var(--line)}
+.sec-head{display:grid;grid-template-columns:220px 1fr;gap:32px;margin-bottom:56px}
+.sec-head>*{min-width:0}
+.sec-head .label{padding-top:.7em}
+.sec-head .body{display:grid;gap:16px;max-width:720px}
+@media (max-width:820px){.sec-head{grid-template-columns:1fr;gap:12px;margin-bottom:40px}.sec-head .label{padding-top:0}}
+
+/* apparition discrète */
+.js .reveal{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}
+.js .reveal.in{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.js .reveal{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}}
+
+/* boutons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:10px;height:44px;padding:0 20px;border-radius:6px;border:1px solid transparent;font:500 .94rem/1 var(--f-sans);text-decoration:none;cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s}
+.btn-ink{background:var(--ink);color:#fff}
+.btn-ink:hover{background:#262b29}
+.btn-line{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn-line:hover{border-color:var(--ink)}
+.btn:disabled{opacity:.6;cursor:wait}
+.arrow{font-family:var(--f-mono)}
+
+/* nav */
+.nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:color-mix(in srgb,var(--surface) 90%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.nav .wrap{display:flex;align-items:center;justify-content:space-between;gap:24px;height:64px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--ink)}
+.brand svg{width:28px;height:28px;flex:none}
+.brand b{font-weight:600;font-size:1.12rem;letter-spacing:-.035em}
+.nav ul{display:flex;gap:32px;list-style:none;margin:0;padding:0;font-size:.9rem;color:var(--ink-2)}
+.nav ul a{text-decoration:none}
+.nav ul a:hover,.nav ul a[aria-current="page"]{color:var(--ink)}
+.nav ul a[aria-current="page"]{text-decoration:underline;text-underline-offset:6px;text-decoration-thickness:1px}
+.nav .btn{height:36px;padding:0 14px;font-size:.86rem}
+.nav-end{display:flex;align-items:center;gap:18px}
+.lang{display:flex;gap:2px;font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em}
+.lang a{padding:4px 5px;text-decoration:none;color:var(--muted)}
+.lang a:hover,.lang a[aria-current="true"]{color:var(--ink)}
+.lang a+a::before{content:"·";margin-right:7px;color:var(--line)}
+@media (max-width:900px){.nav .wrap{flex-wrap:wrap;height:auto;padding-block:10px;row-gap:6px}.nav ul{order:3;width:100%;gap:22px;overflow-x:auto;padding:4px 0 2px;scrollbar-width:none;white-space:nowrap}.nav ul::-webkit-scrollbar{display:none}}
+
+/* hero */
+.hero{background:var(--surface);padding-block:clamp(64px,9vw,112px) 0}
+.hero-top{display:grid;grid-template-columns:1.2fr 1fr;gap:48px;align-items:end;padding-bottom:56px}
+.hero-top>*{min-width:0}
+.hero h1{font-size:clamp(2.6rem,6vw,5rem);font-weight:600;letter-spacing:-.045em;line-height:.98;margin-top:20px}
+.hero h1 span{color:var(--muted)}
+.hero .side{display:grid;gap:28px}
+.ctas{display:flex;gap:10px;flex-wrap:wrap}
+@media (max-width:900px){.hero-top{grid-template-columns:1fr;gap:28px}}
+
+/* visuel produit */
+.board{position:relative;background:var(--dark);color:#e9eeeb;border-radius:10px 10px 0 0;overflow:hidden;border:1px solid var(--dark);border-bottom:0}
+#home g{cursor:pointer}
+#home g:hover circle{fill:#ffffff}
+#home g.sel circle{fill:#12a150}
+.view-bar{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+.vbtn{font:500 .78rem/1 var(--f-sans);color:var(--dark-muted);background:transparent;border:1px solid var(--dark-line);border-radius:6px;height:30px;padding:0 12px;cursor:pointer}
+.vbtn:hover{color:#e9eeeb;border-color:rgba(255,255,255,.3)}
+.vbtn.on{color:#0c100e;background:#e9eeeb;border-color:#e9eeeb}
+.chip{font-family:var(--f-mono);font-size:.7rem;color:var(--dark-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.chip.on{color:var(--accent)}
+.phead{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding-bottom:14px;border-bottom:1px solid var(--dark-line)}
+.pnum{width:34px;height:34px;border-radius:50%;background:var(--accent);color:#0c100e;display:grid;place-items:center;font-family:var(--f-mono);font-weight:500;font-size:.95rem}
+.pid{display:grid;gap:2px;min-width:0}
+.pid b{font-size:1.05rem;font-weight:600;letter-spacing:-.01em}
+.pid span{font-size:.76rem;color:var(--dark-muted)}
+.prate{display:grid;justify-items:end;gap:2px}
+.prate b{font-family:var(--f-mono);font-size:1.4rem;font-weight:500;font-variant-numeric:tabular-nums}
+.prate b.ok{color:var(--ok)}.prate b.mid{color:var(--mid)}.prate b.bad{color:var(--bad)}
+.pstats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--dark-line);margin:14px 0 4px;border:1px solid var(--dark-line);border-radius:6px;overflow:hidden}
+.pstats div{background:var(--dark);padding:9px 10px;display:grid;gap:3px}
+.pstats .label{font-size:.6rem;color:var(--dark-muted)}
+.pstats b{font-family:var(--f-mono);font-weight:500;font-size:.88rem;font-variant-numeric:tabular-nums}
+#player-view h4{margin-top:12px}
+.cursor{position:absolute;left:0;top:0;width:16px;height:20px;pointer-events:none;z-index:5;opacity:0;transition:opacity .3s;filter:drop-shadow(0 2px 3px rgba(0,0,0,.5))}
+.cursor.show{opacity:1}
+.cursor::after{content:"";position:absolute;left:-9px;top:-9px;width:20px;height:20px;border-radius:50%;border:2px solid var(--accent);opacity:0}
+.cursor.click::after{animation:clickRing .5s ease-out}
+.cursor.click svg{animation:clickPress .25s ease}
+@keyframes clickRing{from{opacity:1;transform:scale(.3)}to{opacity:0;transform:scale(1.6)}}
+@keyframes clickPress{50%{transform:scale(.85)}}
+.board-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 18px;border-bottom:1px solid var(--dark-line);font-family:var(--f-mono);font-size:.72rem;color:var(--dark-muted);flex-wrap:wrap}
+.board-bar b{color:#e9eeeb;font-weight:500}
+.board-bar .live{display:inline-flex;align-items:center;gap:8px}
+.board-bar .live i{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.board-grid{display:grid;grid-template-columns:1.55fr 1fr}
+.board-grid>*{min-width:0}
+.pitch{padding:22px;border-right:1px solid var(--dark-line)}
+.pitch svg{display:block;width:100%;height:auto}
+.legend{display:flex;gap:20px;flex-wrap:wrap;margin-top:14px;font-family:var(--f-mono);font-size:.68rem;color:var(--dark-muted)}
+.legend span{display:inline-flex;align-items:center;gap:7px}
+.legend i{width:8px;height:8px;border-radius:50%;display:inline-block}
+.plan{padding:22px}
+.plan h4{margin:0 0 6px;font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--dark-muted);font-weight:500}
+.rule{padding:14px 0;border-bottom:1px solid var(--dark-line);display:grid;gap:8px}
+.rule:last-child{border-bottom:0}
+.rule .top{display:flex;justify-content:space-between;gap:12px;align-items:baseline;font-size:.86rem}
+.rule .top b{font-family:var(--f-mono);font-weight:500;font-variant-numeric:tabular-nums}
+.rule .bar{height:3px;background:var(--dark-line);border-radius:2px;overflow:hidden}
+.rule .bar i{display:block;height:100%;background:var(--ok)}
+.rule .bar i.mid{background:var(--mid)}
+.rule .bar i.bad{background:var(--bad)}
+.rule .note{font-size:.76rem;color:var(--dark-muted);line-height:1.4}
+.rule .bar i{transition:width .4s ease,background .4s ease}
+.st-txt.ok{color:var(--ok)}.st-txt.mid{color:var(--mid)}.st-txt.bad{color:var(--bad)}
+.board-bar #clock{color:#e9eeeb;font-variant-numeric:tabular-nums}
+.feed-title{margin-top:18px!important;padding-top:16px;border-top:1px solid var(--dark-line)}
+.feed{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:0;height:132px;overflow:hidden}
+.feed li{display:grid;grid-template-columns:34px 10px 1fr;gap:8px;align-items:baseline;padding:7px 0;border-bottom:1px solid var(--dark-line);font-size:.78rem;line-height:1.35;color:#c9d0cc}
+.feed li .m{font-family:var(--f-mono);color:var(--dark-muted);font-variant-numeric:tabular-nums}
+.feed li .d{width:7px;height:7px;border-radius:50%;background:var(--dark-muted);align-self:center}
+.rule.new{animation:feedIn .6s ease}
+.tag-new{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.06em;text-transform:uppercase;color:#0c100e;background:var(--mid);padding:1px 5px;border-radius:3px;vertical-align:1px}
+.feed li .d.info{background:transparent;border:1px solid var(--dark-muted)}
+.feed li .d.ok{background:var(--ok)}.feed li .d.mid{background:var(--mid)}.feed li .d.bad{background:var(--bad)}.feed li .d.goal{background:#fff}
+.feed li.new{animation:feedIn .45s ease}
+@keyframes feedIn{from{opacity:0;transform:translateY(-8px);background:rgba(18,161,80,.12)}to{opacity:1;transform:none;background:transparent}}
+@media (prefers-reduced-motion:reduce){.feed li.new{animation:none}}
+@media (max-width:900px){.board-grid{grid-template-columns:1fr}.pitch{border-right:0;border-bottom:1px solid var(--dark-line)}}
+
+/* bande capacités */
+.facts{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--surface)}
+.fact{padding:28px 24px;display:grid;gap:6px}
+.fact+.fact{border-left:1px solid var(--line)}
+.fact b{font-size:1.6rem;font-weight:600;letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.fact span{font-size:.86rem;color:var(--muted)}
+@media (max-width:820px){.facts{grid-template-columns:1fr 1fr}.fact:nth-child(3){border-left:0}.fact:nth-child(n+3){border-top:1px solid var(--line)}}
+
+/* méthode : parcours en étapes, une à la fois */
+.journey{border-top:1px solid var(--ink);padding-top:40px;touch-action:pan-y}
+.j-track{display:grid;overflow-x:clip}
+.j-slide{grid-area:1 / 1;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:64px;align-items:center;opacity:0;visibility:hidden;transform:translateX(28px);transition:opacity .45s ease,transform .45s ease,visibility 0s .45s}
+.j-slide.is-active{opacity:1;visibility:visible;transform:none;transition:opacity .45s ease,transform .45s ease,visibility 0s}
+.j-slide.from-left{transform:translateX(-28px)}
+.j-text{display:grid;gap:18px;align-content:center}
+.j-meta{display:flex;align-items:center;gap:14px}
+.j-num{font-family:var(--f-mono);font-size:3.4rem;line-height:1;letter-spacing:-.04em;color:var(--ink)}
+.kind{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+.kind.green{color:var(--accent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+.kind.dark{color:var(--ink);border-color:var(--ink)}
+.j-text h3{font-size:clamp(1.8rem,3.2vw,2.5rem);font-weight:600;letter-spacing:-.035em;line-height:1.05}
+.j-text p{font-size:1.05rem;color:var(--ink-2);max-width:44ch}
+.j-facts{display:grid;grid-template-columns:repeat(3,1fr);margin:6px 0 0;border-top:1px solid var(--line)}
+.j-facts div{padding:14px 14px 0 0}
+.j-facts div+div{padding-left:14px;border-left:1px solid var(--line)}
+.j-facts dt{font-family:var(--f-mono);font-size:.64rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.j-facts dd{margin:4px 0 0;font-size:.9rem;font-weight:500}
+.j-final .btn{justify-self:start;margin-top:6px}
+
+.j-visual{position:relative;padding:36px;border-radius:14px;background:radial-gradient(120% 90% at 80% 10%,color-mix(in srgb,var(--accent) 7%,var(--bg)),var(--bg));border:1px solid var(--line)}
+.mock{background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:0 30px 50px -36px rgba(0,0,0,.35);overflow:hidden;font-size:.86rem}
+.mock-bar{display:flex;align-items:center;gap:12px;padding:10px 14px;border-bottom:1px solid var(--line);font-family:var(--f-mono);font-size:.68rem;color:var(--muted)}
+.mdots{display:flex;gap:5px}.mdots i{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.mlabel{font-family:var(--f-mono);font-size:.62rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+
+.up{padding:26px 22px;display:grid;justify-items:center;text-align:center;gap:6px}
+.up-ico{width:46px;height:46px;border-radius:12px;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;margin-bottom:6px}
+.up-ico svg{width:22px;height:22px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.up b{font-weight:600;font-size:.92rem;word-break:break-all}
+.up-meta{font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.up-prog{width:100%;height:4px;border-radius:2px;background:var(--line);margin:12px 0 8px;overflow:hidden}
+.up-prog i{display:block;height:100%;width:0;background:var(--accent);transition:width 1.6s ease .2s}
+.is-active .up-prog i{width:100%}
+.checks{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.ps{position:relative;padding:14px;display:grid;gap:12px}
+.ps-stage{display:grid;grid-template-columns:minmax(0,1.75fr) minmax(0,1fr);gap:10px;align-items:start}
+.ps-view{display:block;width:100%;height:auto;border-radius:8px;background:#1d5e33}
+.ps-side{display:grid;gap:8px}
+.ps-now{padding:7px 9px;border-radius:8px;background:#fff7e6;border:1px solid #f3dca8;display:grid;gap:1px}
+.ps-now b{font-size:.74rem;font-weight:600;line-height:1.25}
+.ps-map{display:block;width:100%;height:auto;border-radius:6px;background:#22663a}
+.ps-map .ln{fill:none;stroke:rgba(255,255,255,.7);stroke-width:.6}
+.ps-map .pt{fill:rgba(255,255,255,.5);stroke:#fff;stroke-width:.4;transition:fill .25s,r .25s}
+.ps-map .pt.sel{fill:#f5a524}
+.ps-map .pt.ok{fill:var(--accent)}
+.ps-count{font-family:var(--f-mono);font-size:.62rem;color:var(--muted)}
+.ps-view .line{fill:none;stroke:rgba(255,255,255,.92);stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.ps-view .pink{fill:none;stroke:#ff2bd6;stroke-width:1.5;stroke-dasharray:5 3.5;stroke-linecap:round;opacity:0;transition:opacity .7s}
+.ps-view.matched .pink{opacity:.95}
+.ps-view .dot{fill:var(--accent);stroke:#fff;stroke-width:1.6;opacity:0;transform-box:fill-box;transform-origin:center;transform:scale(.4);transition:opacity .25s,transform .25s}
+.ps-view .dot.on{opacity:1;transform:none}
+.ps-view .lbl{font-family:var(--f-mono);font-size:7px;fill:#fff;opacity:0;transition:opacity .25s;paint-order:stroke;stroke:rgba(0,0,0,.55);stroke-width:2.4px}
+.ps-view .lbl.on{opacity:1}
+.ps-checks{transition:opacity .5s}
+.ps-checks:not(.on){opacity:0}
+.ps-cursor{transition:opacity .3s,transform .8s cubic-bezier(.45,0,.25,1)}
+.checks span,.gp-list li{display:inline-flex;align-items:center;gap:7px}
+.checks span{font-size:.74rem;padding:5px 10px;border-radius:999px;background:color-mix(in srgb,var(--accent) 9%,transparent);color:#0d7a3d}
+.checks span::before,.gp-list li::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3.2 6.2l1.8 1.8 3.8-3.8' fill='none' stroke='white' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") center/12px no-repeat;flex:none}
+
+.gp{padding:16px 18px;display:grid;gap:10px}
+.gp-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.gp-row .mlabel{margin-right:4px}
+.tagp{font-size:.74rem;padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--ink-2)}
+.tagp.dark{background:var(--ink);color:#fff;border-color:var(--ink);font-family:var(--f-mono)}
+.gp-list,.gp-players,.an-list,.ft-list{list-style:none;margin:0;padding:0;display:grid}
+.gp-list li{padding:8px 0;border-top:1px solid var(--line)}
+.gp-list li::before{background-color:var(--ink)}
+.gp-players li{display:grid;grid-template-columns:24px auto 1fr;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line)}
+.gp-players b{font-weight:600}
+.gp-players span:last-child{color:var(--muted);text-align:right}
+.pnum-s{width:24px;height:24px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--f-mono);font-size:.7rem}
+.pnum-s.big{width:38px;height:38px;font-size:.9rem;background:var(--accent);color:#0b0d0c}
+
+.an{padding:18px;display:grid;gap:14px}
+.an-top{display:flex;align-items:center;gap:14px}
+.ring{width:56px;height:56px;transform:rotate(-90deg)}
+.ring circle{fill:none;stroke:var(--line);stroke-width:4}
+.ring .v{stroke:var(--accent);stroke-linecap:round;stroke-dasharray:113.1;stroke-dashoffset:113.1;transition:stroke-dashoffset 1.6s ease .2s}
+.is-active .ring .v{stroke-dashoffset:36.2}
+.an-top b{display:block;font-size:1.5rem;font-weight:600;letter-spacing:-.03em;line-height:1}
+.an-top span{font-size:.78rem;color:var(--muted)}
+.an-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid var(--line)}
+.an-list li span{display:inline-flex;align-items:center;gap:8px}
+.an-list li span::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--accent)}
+.an-list li.run span::before{background:transparent;border:2px solid var(--mid);border-right-color:transparent;animation:spin 1s linear infinite}
+.an-list b{font-family:var(--f-mono);font-weight:500;font-size:.8rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ask{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:6px;background:var(--bg)}
+.ask p{font-weight:500}
+.ask-b{display:flex;gap:6px}
+.ask-b span{font-size:.76rem;padding:5px 14px;border-radius:6px;border:1px solid var(--line);background:var(--surface)}
+.ask-b .yes{background:var(--ink);color:#fff;border-color:var(--ink)}
+
+.tr,.pr-m{padding:18px;display:grid;gap:12px}
+.tr-top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px}
+.tr-top b{display:block;font-size:2.2rem;font-weight:600;letter-spacing:-.04em;line-height:1;margin-top:4px}
+.seg{flex:1;max-width:180px;display:flex;gap:3px;height:8px}
+.seg i{border-radius:2px}
+.seg i.ok,.mg-b i.ok{background:var(--ok)}.seg i.mid,.mg-b i.mid{background:var(--mid)}.seg i.bad,.mg-b i.bad{background:var(--bad)}
+.mg{display:grid;gap:6px;padding-top:10px;border-top:1px solid var(--line)}
+.mg-t{display:flex;justify-content:space-between;gap:10px}
+.mg-t b{font-family:var(--f-mono);font-weight:500;font-size:.8rem}
+.mg-b{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.mg-b i{display:block;height:100%}
+.tr-foot,.pr-notes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tr-foot span,.pr-notes span{font-size:.76rem;padding:8px 10px;border-radius:8px}
+.w{background:color-mix(in srgb,var(--ok) 9%,transparent);color:#0d7a3d}
+.l{background:color-mix(in srgb,var(--bad) 9%,transparent);color:#b73a3e}
+.pr-head{display:flex;align-items:center;gap:12px}
+.pr-head div{display:grid}
+.pr-head b{font-size:1.05rem;font-weight:600}
+.pr-head span{font-size:.76rem;color:var(--muted)}
+.pr-scores{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.pr-scores div{border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;gap:4px}
+.pr-scores b{font-size:1.6rem;font-weight:600;letter-spacing:-.03em;line-height:1}
+.pr-scores b.ok{color:var(--ok)}.pr-scores b.mid{color:var(--mid)}
+.pr-scores small{font-size:.75rem;color:var(--muted);font-weight:500}
+
+.ft{background:var(--dark);color:#e9eeeb;border-radius:12px;padding:24px;display:grid;gap:18px;box-shadow:0 30px 50px -30px rgba(0,0,0,.5)}
+.ft .mlabel{color:var(--dark-muted)}
+.ft-teams{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:14px;margin-top:10px;font-size:.9rem}
+.ft-teams span:last-child{text-align:right;color:var(--dark-muted)}
+.ft-teams b{font-family:var(--f-mono);font-size:2rem;font-weight:500;letter-spacing:-.02em}
+.ft-list li{display:flex;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--dark-line);font-size:.86rem}
+.ft-list li b{font-weight:500;display:inline-flex;align-items:center;gap:8px}
+.ft-list li b::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.ft-list li span{font-family:var(--f-mono);font-size:.78rem;color:var(--dark-muted)}
+
+.j-nav{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;margin-top:40px}
+.j-arrow{width:48px;height:48px;border-radius:50%;border:1px solid var(--line);background:var(--surface);display:grid;place-items:center;cursor:pointer;transition:border-color .15s,background .15s,opacity .15s}
+.j-arrow svg{width:20px;height:20px;fill:none;stroke:var(--ink);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.j-arrow:hover{border-color:var(--ink)}
+.j-arrow.next{background:var(--ink);border-color:var(--ink)}
+.j-arrow.next svg{stroke:#fff}
+.j-arrow.next:hover{background:#262b29}
+.j-arrow:disabled{opacity:.3;cursor:default}
+.j-progress{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.j-progress button{all:unset;box-sizing:border-box;width:100%;display:grid;gap:8px;cursor:pointer}
+.j-progress i{display:block;height:3px;border-radius:2px;background:var(--line);transition:background .3s}
+.j-progress span{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.j-progress li.done i{background:var(--ink)}
+.j-progress li.on i{background:var(--accent)}
+.j-progress li.on span{color:var(--ink)}
+.j-progress button:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:4px}
+@media (max-width:900px){.j-slide{grid-template-columns:1fr;gap:28px;align-items:start}.j-visual{padding:20px}}
+@media (max-width:640px){.j-progress span{display:none}.j-facts{grid-template-columns:1fr}.j-facts div,.j-facts div+div{padding:10px 0 0;border-left:0}.j-num{font-size:2.6rem}.tr-foot,.pr-notes{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){.j-slide,.j-slide.is-active{transition:none}.up-prog i,.ring .v{transition:none}.an-list li.run span::before{animation:none}}
+
+/* rapport */
+#report .sec-head .lead{font-size:1.05rem}
+.rapp-top,.rapp-body{pointer-events:none;user-select:none}
+.rapp{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 40px 70px -50px rgba(0,0,0,.35)}
+.rapp-top{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 22px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.rapp-title{display:grid;gap:3px}
+.rapp-title b{font-weight:600;letter-spacing:-.01em}
+.rtabs{display:flex;gap:3px;padding:3px;background:var(--bg);border:1px solid var(--line);border-radius:8px}
+.rtabs button{font:500 .86rem/1 var(--f-sans);border:0;background:transparent;color:var(--muted);padding:9px 14px;border-radius:6px;cursor:pointer}
+.rtabs button:hover{color:var(--ink)}
+.rtabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+.rapp-body{position:relative;height:540px;overflow-y:auto;padding:0 26px 26px;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+.rh{margin:26px 0 8px;font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:var(--muted);display:flex;justify-content:space-between;gap:12px}
+.rh span{text-transform:none;letter-spacing:0;font-family:var(--f-sans);font-size:.78rem}
+.rh.ok{color:var(--ok)}.rh.bad{color:var(--bad)}
+.rsum{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;padding:24px 0 22px;border-bottom:1px solid var(--line)}
+.rsum .big{display:block;font-size:clamp(2.6rem,5vw,3.4rem);font-weight:600;letter-spacing:-.045em;line-height:1;margin-top:8px}
+.split{display:flex;gap:18px;flex-wrap:wrap;font-size:.86rem;color:var(--ink-2)}
+.split span{display:inline-flex;align-items:center;gap:7px}
+.split i{width:8px;height:8px;border-radius:50%}
+.split i.ok{background:var(--ok)}.split i.mid{background:var(--mid)}.split i.bad{background:var(--bad)}
+.finds{list-style:none;margin:0;padding:0}
+.finds li{position:relative;display:grid;gap:4px;padding:14px 0 14px 26px;border-top:1px solid var(--line)}
+.finds li::before{position:absolute;left:0;top:14px;font-family:var(--f-mono);font-size:.85rem}
+.finds.ok li::before{content:"✓";color:var(--ok)}
+.finds.bad li::before{content:"✕";color:var(--bad)}
+.finds b{font-weight:600;letter-spacing:-.01em}
+.finds p{font-size:.9rem;color:var(--ink-2)}
+.clips{font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.takeaway{margin-top:22px;padding:16px 18px;background:var(--bg);border-left:2px solid var(--ink);display:grid;gap:6px}
+.gauge{display:grid;grid-template-columns:1fr auto;gap:6px 14px;padding:12px 0;border-top:1px solid var(--line);align-items:center}
+.g-top{display:contents}
+.g-top span{font-size:.88rem}
+.g-top em{font-style:normal;font-family:var(--f-mono);font-size:.68rem;color:var(--mid);margin-left:6px}
+.g-top b{font-family:var(--f-mono);font-weight:500;font-size:.86rem;font-variant-numeric:tabular-nums;text-align:right}
+.g-bar{height:4px;background:var(--line);border-radius:2px;overflow:hidden}
+.g-bar i{display:block;height:100%;background:var(--ok)}
+.g-bar i.mid{background:var(--mid)}.g-bar i.bad{background:var(--bad)}
+.gauge .st{justify-self:end}
+.st{font-family:var(--f-mono);font-size:.72rem;display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.st::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st.ok{color:var(--ok)}.st.mid{color:var(--mid)}.st.bad{color:var(--bad)}
+.tstats-head,.tstat-row{display:grid;grid-template-columns:minmax(0,1.4fr) 56px minmax(60px,1fr) 56px 20px;gap:14px;align-items:center}
+.tstats-head{padding:2px 0 8px;font-family:var(--f-mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.tstats-head span:nth-child(2){text-align:right}
+.tstat{border-top:1px solid var(--line)}
+.tstat-row{width:100%;background:transparent;border:0;padding:13px 0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.tstat-row:hover .ts-k{text-decoration:underline;text-underline-offset:3px}
+.tstat-row b{font-family:var(--f-mono);font-weight:500;font-size:.9rem;text-align:right;font-variant-numeric:tabular-nums}
+.tstat-row b.away{text-align:left;color:var(--muted)}
+.ts-k{font-size:.9rem}
+.ts-bar{height:4px;border-radius:2px;background:var(--line);overflow:hidden}
+.ts-bar i{display:block;height:100%;background:var(--ink)}
+.chev{font-family:var(--f-mono);color:var(--muted);transition:transform .2s}
+.tstat-row[aria-expanded="true"] .chev{transform:rotate(45deg);color:var(--ink)}
+.tdetail{padding:6px 0 18px;display:grid;gap:14px}
+.chart{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;align-items:end;height:130px;padding-top:8px}
+.chart div{height:100%;display:grid;grid-template-rows:auto 1fr auto;gap:5px;text-align:center}
+.chart div span{font-family:var(--f-mono);font-size:.7rem;color:var(--ink-2)}
+.chart div i{align-self:end;justify-self:center;display:block;width:60%;max-width:34px;background:var(--ink-2);border-radius:3px 3px 0 0;min-height:4px}
+.chart div em{font-style:normal;font-family:var(--f-mono);font-size:.62rem;color:var(--muted)}
+.thirds{display:flex;gap:2px;border-radius:6px;overflow:hidden}
+.thirds div{background:var(--bg);border:1px solid var(--line);padding:8px 10px;display:grid;gap:2px;min-width:0}
+.thirds b{font-family:var(--f-mono);font-weight:500;font-size:.88rem}
+.thirds span{font-size:.72rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tnote{font-size:.86rem;color:var(--ink-2);padding-left:12px;border-left:2px solid var(--accent)}
+.plist-head,.prow{display:grid;grid-template-columns:40px minmax(0,1fr) 90px minmax(110px,160px);gap:14px;align-items:center}
+.plist-head{padding:20px 0 8px;font-family:var(--f-mono);font-size:.66rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.plist-head span:first-child{grid-column:1 / span 2}
+.prow{width:100%;background:transparent;border:0;border-top:1px solid var(--line);padding:11px 0;font:inherit;color:inherit;text-align:left;cursor:pointer}
+.prow:hover{background:var(--bg)}
+.pn{width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:grid;place-items:center;font-family:var(--f-mono);font-size:.8rem}
+.pn.big{width:44px;height:44px;font-size:1rem}
+.pnm{display:grid;min-width:0}
+.pnm b{font-weight:600;font-size:.92rem}
+.pnm em,.dhead em{font-style:normal;font-size:.76rem;color:var(--muted)}
+.pr{font-family:var(--f-mono);font-weight:500;font-size:1rem}
+.pr.ok,.scores b.ok{color:var(--ok)}.pr.mid,.scores b.mid{color:var(--mid)}.pr.bad,.scores b.bad{color:var(--bad)}
+.pi{display:grid;grid-template-columns:1fr 38px;gap:10px;align-items:center}
+.pi::before{content:"";grid-column:1;grid-row:1;height:4px;border-radius:2px;background:var(--line)}
+.pi i{grid-column:1;grid-row:1;height:4px;border-radius:2px;background:var(--ok)}
+.pi i.mid{background:var(--mid)}.pi i.bad{background:var(--bad)}
+.pi b{font-family:var(--f-mono);font-weight:500;font-size:.84rem;text-align:right}
+.back{margin-top:18px;background:transparent;border:1px solid var(--line);border-radius:6px;height:32px;padding:0 12px;font:500 .82rem/1 var(--f-sans);color:var(--ink-2);cursor:pointer}
+.back:hover{border-color:var(--ink);color:var(--ink)}
+.dhead{display:flex;align-items:center;gap:14px;margin-top:18px}
+.dhead div{display:grid}
+.dhead b{font-size:1.25rem;font-weight:600;letter-spacing:-.02em}
+.scores{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}
+.scores>div{border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:6px}
+.scores b{font-size:2.2rem;font-weight:600;letter-spacing:-.04em;line-height:1}
+.scores small{font-size:.9rem;color:var(--muted);font-weight:500;margin-left:2px}
+.scores p{font-size:.8rem;color:var(--muted)}
+.label.sub{margin:22px 0 8px}
+.dstats{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.dstats div{background:var(--surface);padding:10px 12px;display:grid;gap:3px}
+.dstats span{font-size:.72rem;color:var(--muted)}
+.dstats b{font-family:var(--f-mono);font-weight:500;font-size:.95rem}
+.pinstr{border-top:1px solid var(--line)}
+.pinstr .gauge{border-top:0}
+.pnotes{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 0 14px}
+.pnotes p{font-size:.82rem;color:var(--ink-2);padding:10px 12px;background:var(--bg);border-radius:6px;display:grid;gap:3px}
+.pnotes b{font-family:var(--f-mono);font-size:.66rem;letter-spacing:.06em;text-transform:uppercase;font-weight:500}
+.pnotes .good b{color:var(--ok)}.pnotes .miss b{color:var(--bad)}
+.pnotes span{font-family:var(--f-mono);font-size:.68rem;color:var(--muted)}
+.rc.cursor{filter:drop-shadow(0 2px 3px rgba(0,0,0,.25));transition:opacity .3s,transform .85s cubic-bezier(.45,0,.25,1)}
+@media (max-width:700px){.rapp-body{height:500px;padding:0 16px 20px}.scores,.pnotes{grid-template-columns:1fr}.plist-head,.prow{grid-template-columns:34px minmax(0,1fr) 44px 90px;gap:10px}.tstats-head,.tstat-row{grid-template-columns:minmax(0,1fr) 44px 40px 44px 16px;gap:8px}.dstats{grid-template-columns:1fr 1fr}}
+
+/* bénéfices */
+.gains{display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--ink)}
+.gain{padding:24px 24px 0 0;display:grid;gap:8px;align-content:start}
+.gain+.gain{padding-left:24px;border-left:1px solid var(--line)}
+.gain p{font-size:.92rem;color:var(--muted)}
+.statement{margin-top:96px;padding-top:56px;border-top:1px solid var(--line)}
+.statement p{font-size:clamp(2.2rem,5.4vw,4.4rem);font-weight:600;letter-spacing:-.045em;line-height:1.02;max-width:16ch;text-wrap:balance}
+.statement span{color:var(--muted)}
+@media (max-width:980px){.gains{grid-template-columns:1fr 1fr}.gain,.gain+.gain{padding:24px 20px 24px 0;border-left:0}.gain:nth-child(even){padding-left:20px;border-left:1px solid var(--line)}.gain:nth-child(n+3){border-top:1px solid var(--line)}.objective{grid-template-columns:1fr;gap:12px}}
+@media (max-width:560px){.gains{grid-template-columns:1fr}.gain,.gain+.gain,.gain:nth-child(even){padding:20px 0;border-left:0;border-top:1px solid var(--line)}.gain:first-child{border-top:0}}
+
+/* accès */
+.access{background:var(--dark);color:#e9eeeb;border-top:0}
+.access .label{color:var(--dark-muted)}
+.access .wrap{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:start}
+.access .wrap>*{min-width:0}
+.access h2{font-size:clamp(2rem,4vw,3rem)}
+.access .lead{color:var(--dark-muted);margin-top:18px}
+.access ul{list-style:none;margin:28px 0 0;padding:0;display:grid;gap:10px;font-size:.92rem;color:#c9d0cc}
+.access ul li{display:flex;gap:12px}
+.access ul li::before{content:"—";color:var(--accent);font-family:var(--f-mono)}
+.form{display:grid;gap:14px;padding:28px;border:1px solid var(--dark-line);border-radius:10px;background:var(--dark-2)}
+.field{display:grid;gap:6px}
+.field label{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--dark-muted)}
+.field input,.field select{height:44px;padding:0 12px;border-radius:6px;border:1px solid var(--dark-line);background:var(--dark);color:#e9eeeb;font:inherit;font-size:.95rem;width:100%;min-width:0}
+.field select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,#8b948f 50%),linear-gradient(135deg,#8b948f 50%,transparent 50%);background-position:calc(100% - 18px) 19px,calc(100% - 13px) 19px;background-size:5px 5px;background-repeat:no-repeat;padding-right:36px}
+.field input::placeholder{color:#59615d}
+.field input:focus,.field select:focus{outline:none;border-color:var(--accent)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:.8rem;line-height:1.45;color:var(--dark-muted)}
+.consent input{margin-top:2px;accent-color:var(--accent)}
+.form .btn{background:#fff;color:var(--ink);width:100%}
+.form .btn:hover{background:#dfe5e1}
+.form-msg{font-size:.88rem;min-height:1.3em}
+.form-msg.ok{color:#5fd394}
+.form-msg.err{color:#ff8a8e}
+@media (max-width:900px){.access .wrap{grid-template-columns:1fr;gap:40px}}
+@media (max-width:480px){.row2{grid-template-columns:1fr}.form{padding:20px}}
+
+.footer{background:var(--dark);color:var(--dark-muted);font-size:.88rem;border-top:1px solid var(--dark-line)}
+.footer .top{display:grid;grid-template-columns:1.4fr repeat(3,1fr);gap:40px;padding-block:56px 40px}
+.footer .brand{color:#e9eeeb}
+.footer .brand img{width:28px;height:28px}
+.footer .about-f{display:grid;gap:14px;max-width:32ch}
+.footer h4{margin:0 0 12px;font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;font-weight:500;color:#e9eeeb}
+.footer ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.footer a{text-decoration:none}
+.footer a:hover{color:#e9eeeb}
+.footer .bottom{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;padding-block:20px;border-top:1px solid var(--dark-line);font-size:.8rem}
+@media (max-width:820px){.footer .top{grid-template-columns:1fr 1fr}.footer .about-f{grid-column:1 / -1}}
+.access .consent a{color:#e9eeeb}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="logo" viewBox="0 0 64 64">
+    <rect width="64" height="64" rx="12" fill="#0b0d0c"/>
+    <g fill="none" stroke="#ffffff" stroke-opacity=".26" stroke-width="1.3">
+      <rect x="5" y="13" width="54" height="38" rx="1.5"/>
+      <rect x="5" y="23" width="8" height="18"/>
+      <rect x="51" y="23" width="8" height="18"/>
+      <line x1="32" y1="13" x2="32" y2="22.6"/>
+      <line x1="32" y1="41.4" x2="32" y2="51"/>
+      <circle cx="32" cy="32" r="9.4"/>
+    </g>
+    <g fill="none" stroke="#ffffff" stroke-opacity=".45" stroke-width="1.05" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8.6" cy="32" r="1.35"/>
+      <circle cx="18" cy="26.4" r="1.35"/>
+      <path d="M10 31.2 L16.6 27.2" stroke-dasharray="1.2 1.3"/>
+      <circle cx="42.8" cy="17.4" r="1.35"/>
+      <path d="M44.6 18.2 Q47.4 20.6 50.6 19" stroke-dasharray="1.2 1.3"/>
+      <path d="M49.2 17.6 L51 18.9 L49.6 20.6"/>
+      <circle cx="55.4" cy="32" r="1.35"/>
+      <circle cx="46.6" cy="44.6" r="1.35"/>
+      <path d="M54.6 33.2 L47.4 43.4" stroke-dasharray="1.2 1.3"/>
+    </g>
+    <path d="M38.65 25.35 A9.4 9.4 0 1 0 38.65 38.65" fill="none" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round"/>
+  </symbol>
+</svg>
+
+<nav class="nav" aria-label="Main navigation">
+  <div class="wrap">
+    <a class="brand" href="#top"><svg aria-hidden="true"><use href="#logo"/></svg><b>Ciprio</b></a>
+    <ul>
+      <li><a href="/fr" aria-current="page">Accueil</a></li>
+      <li><a href="/fr/blog">Blog</a></li>
+      <li><a href="/fr/contact">Contact</a></li>
+      <li><a href="/fr/about">À propos</a></li>
+    </ul>
+    <div class="nav-end">
+      <span class="lang"><a href="/" hreflang="en" lang="en">ENG</a><a href="/fr" hreflang="fr" aria-current="true">FR</a></span>
+      <a class="btn btn-ink" href="#access">Demander l'accès</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <div class="hero-top">
+      <div>
+        <p class="label">Analyse vidéo · Football</p>
+        <h1>Votre plan de jeu, <span>mesuré sur le terrain.</span></h1>
+      </div>
+      <div class="side">
+        <p class="lead">Ciprio compare la vidéo du match entier avec vos consignes d'avant-match et vous rend un rapport tactique, pour l'équipe et pour chaque joueur.</p>
+        <div class="ctas">
+          <a class="btn btn-ink" href="#access">Demander l'accès <span class="arrow">→</span></a>
+          <a class="btn btn-line" href="#report">Voir un rapport</a>
+        </div>
+      </div>
+    </div>
+
+    <figure class="board" id="board" style="margin:0" aria-label="Exemple d'analyse en direct : match simulé avec suivi du plan de jeu">
+      <div class="board-bar">
+        <span><b>J12 · Northfield FC <span id="score-h">0</span>–<span id="score-a">0</span> Riverside United</b></span>
+        <span class="live"><i></i><span id="clock">00:00</span> · <span id="period">1re mi-temps</span></span>
+        <span>Données d'illustration</span>
+      </div>
+      <div class="board-grid">
+        <div class="pitch">
+          <svg id="pitch-svg" viewBox="-2 -2 109 72" role="img" aria-label="Terrain vu de dessus, avec les joueurs, le ballon et la zone de pressing">
+            <g fill="none" stroke="rgba(255,255,255,.18)" stroke-width=".35">
+              <rect x="0" y="0" width="105" height="68"/>
+              <line x1="52.5" y1="0" x2="52.5" y2="68"/>
+              <circle cx="52.5" cy="34" r="9.15"/>
+              <rect x="0" y="13.84" width="16.5" height="40.32"/><rect x="0" y="24.84" width="5.5" height="18.32"/>
+              <rect x="88.5" y="13.84" width="16.5" height="40.32"/><rect x="99.5" y="24.84" width="5.5" height="18.32"/>
+              <path d="M16.5 26.7 A9.15 9.15 0 0 1 16.5 41.3"/><path d="M88.5 26.7 A9.15 9.15 0 0 0 88.5 41.3"/>
+            </g>
+            <rect id="press-zone" x="0" y="0" width="22" height="26" rx="2" fill="#12a150" fill-opacity=".14" stroke="#12a150" stroke-opacity=".7" stroke-width=".35" stroke-dasharray="1.2 1" opacity="0"/>
+            <g id="press-lines" stroke="#12a150" stroke-width=".5" stroke-linecap="round" opacity="0"></g>
+            <line id="pass-line" stroke="rgba(255,255,255,.35)" stroke-width=".3" stroke-dasharray=".8 .8" x1="0" y1="0" x2="0" y2="0"/>
+            <g id="away" fill="#6c7570"></g>
+            <g id="home" fill="#e9eeeb"></g>
+            <circle id="focus-ring" r="3.7" fill="none" stroke="#e9eeeb" stroke-width=".3" stroke-dasharray=".8 .6"/>
+            <text id="focus-label" text-anchor="middle" font-family="Geist Mono, monospace" font-size="2.2" fill="#e9eeeb">Lucas</text>
+            <text id="press-label" text-anchor="middle" font-family="Geist Mono, monospace" font-size="2" fill="#12a150" opacity="0"></text>
+            <circle id="ball" r=".85" fill="#fff" stroke="#0c100e" stroke-width=".25"/>
+          </svg>
+          <div class="legend">
+            <span><i style="background:#e9eeeb"></i>Northfield FC</span>
+            <span><i style="background:#6c7570"></i>Riverside United</span>
+            <span><i style="background:#12a150"></i>Contre-pressing</span>
+          </div>
+        </div>
+        <div class="plan">
+          <div class="view-bar">
+            <button type="button" class="vbtn on" id="team-btn">Équipe</button>
+            <span class="chip" id="sel-chip">Cliquez sur un joueur du terrain</span>
+          </div>
+          <div id="team-view">
+            <h4>Plan de jeu · suivi en direct</h4>
+            <div id="rules"></div>
+          </div>
+          <div id="player-view" hidden>
+            <div class="phead">
+              <span class="pnum" id="p-num"></span>
+              <div class="pid"><b id="p-name"></b><span id="p-pos"></span></div>
+              <div class="prate"><span class="label">Note</span><b id="p-rating"></b></div>
+            </div>
+            <div class="pstats" id="p-stats"></div>
+            <h4>Consignes individuelles</h4>
+            <div id="p-rules"></div>
+          </div>
+          <h4 class="feed-title">Événements en direct</h4>
+          <ol class="feed" id="feed" aria-live="off"></ol>
+        </div>
+      </div>
+      <div class="cursor" id="cursor" aria-hidden="true"><svg viewBox="0 0 16 20" width="16" height="20"><path d="M1 1 L1 15.5 L4.8 12 L7.4 18.2 L9.8 17.2 L7.3 11.2 L12.6 11.2 Z" fill="#fff" stroke="#0c100e" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
+    </figure>
+  </div>
+</header>
+
+<div class="facts">
+  <div class="fact"><b>90 min</b><span>de vidéo analysées, sans montage</span></div>
+  <div class="fact"><b>3 niveaux</b><span>plan de jeu, équipe, individuel</span></div>
+  <div class="fact"><b>Chaque joueur</b><span>suivi, noté et analysé</span></div>
+  <div class="fact"><b>Horodaté</b><span>un extrait vidéo pour chaque constat</span></div>
+</div>
+
+<main>
+<section id="context">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="label">01 — Contexte</p>
+      <div class="body">
+        <h2>L'analyse vidéo des pros. Pour tous les staffs.</h2>
+        <p class="lead">Dans le football professionnel, chaque match est décortiqué par une équipe d'analystes. Ailleurs, les staffs filment leurs matchs mais manquent de temps et d'outils pour exploiter 90 minutes de jeu. Ciprio apporte cette lecture précise, appuyée sur les données, à tous les clubs.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="method">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="label">02 — Méthode</p>
+      <div class="body">
+        <h2>Six étapes, du coup de sifflet final au débrief.</h2>
+        <p class="lead">Suivez un match dans Ciprio, étape par étape.</p>
+      </div>
+    </div>
+    <div class="journey reveal" id="journey" aria-roledescription="carousel" aria-label="Comment fonctionne Ciprio">
+      <div class="j-track">
+
+        <article class="j-slide is-active" aria-roledescription="slide" aria-label="Étape 1 sur 6">
+          <div class="j-text">
+            <div class="j-meta"><span class="j-num">01</span><span class="kind">Entrée</span></div>
+            <h3>Envoyez le match</h3>
+            <p>Les 90 minutes complètes, telles que filmées. Sans montage, sans découpage, sans annotation.</p>
+            <dl class="j-facts"><div><dt>Caméra</dt><dd>Tribune ou bord de terrain</dd></div><div><dt>Qualité</dt><dd>Du smartphone à la 4K</dd></div><div><dt>Votre temps</dt><dd>2 minutes</dd></div></dl>
+          </div>
+          <div class="j-visual">
+            <div class="mock">
+              <div class="mock-bar"><span class="mdots"><i></i><i></i><i></i></span><span>Nouvelle analyse</span></div>
+              <div class="up">
+                <span class="up-ico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 16v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3"/></svg></span>
+                <b>J12_Northfield_v_Riverside.mp4</b>
+                <span class="up-meta">1,8 Go · 94:12 · 1080p</span>
+                <div class="up-prog"><i></i></div>
+                <div class="checks"><span>Match complet détecté</span><span>2 mi-temps</span><span>22 joueurs visibles</span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="j-slide" aria-roledescription="slide" aria-label="Étape 2 sur 6">
+          <div class="j-text">
+            <div class="j-meta"><span class="j-num">02</span><span class="kind">Entrée</span></div>
+            <h3>Configurez votre terrain</h3>
+            <p>Une fois par terrain : cliquez sur quelques marquages bien visibles, sur quelques images. Ciprio dessine votre terrain pour que vous le vérifiiez, puis l'enregistre et le réutilise pour les matchs suivants, tant que la caméra reste au même endroit.</p>
+            <dl class="j-facts"><div><dt>Quand</dt><dd>Une fois par terrain</dd></div><div><dt>Votre temps</dt><dd>Moins de 5 minutes</dd></div><div><dt>Matchs suivants</dt><dd>Réutilisé si la caméra ne bouge pas</dd></div></dl>
+          </div>
+          <div class="j-visual">
+            <div class="mock">
+              <div class="mock-bar"><span class="mdots"><i></i><i></i><i></i></span><span>Configuration du terrain · Image 2 sur 4</span></div>
+              <div class="ps" id="ps">
+                <div class="ps-stage">
+                  <svg class="ps-view" id="ps-view" viewBox="0 0 360 210" role="img" aria-label="Un coach clique sur les marquages du terrain dans une image du match, puis le terrain se dessine sur les vraies lignes"></svg>
+                  <div class="ps-side">
+                    <div class="ps-now"><span class="mlabel">Repère à placer</span><b id="ps-name">Surface gauche : coin, côté opposé</b></div>
+                    <svg class="ps-map" id="ps-map" viewBox="-4 -4 113 76" aria-hidden="true"></svg>
+                    <span class="ps-count" id="ps-count">0 / 4 placés</span>
+                  </div>
+                </div>
+                <div class="checks ps-checks" id="ps-checks"><span>4 repères placés</span><span>Lignes alignées</span><span>Terrain enregistré</span></div>
+                <div class="cursor ps-cursor" id="ps-cursor" aria-hidden="true"><svg viewBox="0 0 16 20" width="16" height="20"><path d="M1 1 L1 15.5 L4.8 12 L7.4 18.2 L9.8 17.2 L7.3 11.2 L12.6 11.2 Z" fill="#fff" stroke="#0c100e" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="j-slide" aria-roledescription="slide" aria-label="Étape 3 sur 6">
+          <div class="j-text">
+            <div class="j-meta"><span class="j-num">03</span><span class="kind">Entrée</span></div>
+            <h3>Donnez le plan de jeu</h3>
+            <p>Briefez Ciprio comme vous briefez votre groupe : le plan, les principes, et ce que vous attendez de chaque joueur.</p>
+            <dl class="j-facts"><div><dt>Équipe</dt><dd>Système et principes</dd></div><div><dt>Joueurs</dt><dd>Consignes individuelles</dd></div><div><dt>Format</dt><dd>En langage courant</dd></div></dl>
+          </div>
+          <div class="j-visual">
+            <div class="mock">
+              <div class="mock-bar"><span class="mdots"><i></i><i></i><i></i></span><span>Plan de jeu · J12</span></div>
+              <div class="gp">
+                <div class="gp-row"><span class="mlabel">Système</span><span class="tagp dark">4-3-3</span><span class="tagp">Pressing haut</span><span class="tagp">Relance courte</span></div>
+                <p class="mlabel">Consignes d'équipe</p>
+                <ul class="gp-list"><li>Presser dans les 5 s après la perte</li><li>Relancer court depuis le gardien</li><li>Bloc compact, 30 m max</li></ul>
+                <p class="mlabel">Consignes individuelles</p>
+                <ul class="gp-players"><li><span class="pnum-s">3</span><b>Moussa</b><span>Dédoubler à gauche</span></li><li><span class="pnum-s">9</span><b>Jack</b><span>Presser le défenseur central</span></li><li><span class="pnum-s">7</span><b>Lucas</b><span>Attaquer la surface</span></li></ul>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="j-slide" aria-roledescription="slide" aria-label="Étape 4 sur 6">
+          <div class="j-text">
+            <div class="j-meta"><span class="j-num">04</span><span class="kind green">Analyse</span></div>
+            <h3>Ciprio analyse</h3>
+            <p>Chaque joueur et le ballon sont suivis sur tout le match, et chaque consigne est vérifiée. Si quelque chose n'est pas clair, Ciprio vous pose la question.</p>
+            <dl class="j-facts"><div><dt>Suivi</dt><dd>22 joueurs et le ballon</dd></div><div><dt>Vérifications</dt><dd>Chaque consigne</dd></div><div><dt>Durée</dt><dd>Quelques minutes</dd></div></dl>
+          </div>
+          <div class="j-visual">
+            <div class="mock">
+              <div class="mock-bar"><span class="mdots"><i></i><i></i><i></i></span><span>Analyse en cours · J12</span></div>
+              <div class="an">
+                <div class="an-top">
+                  <svg class="ring" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="18"/><circle class="v" cx="22" cy="22" r="18"/></svg>
+                  <div><b>68%</b><span>Environ 3 minutes restantes</span></div>
+                </div>
+                <ul class="an-list">
+                  <li class="done"><span>Joueurs suivis</span><b>22 / 22</b></li>
+                  <li class="done"><span>Ballon suivi</span><b>94 min</b></li>
+                  <li class="done"><span>Événements détectés</span><b>1 284</b></li>
+                  <li class="run"><span>Consignes vérifiées</span><b>8 / 12</b></li>
+                </ul>
+                <div class="ask"><span class="mlabel">Petite question</span><p>Le numéro 14 est entré à 63:00. Est-ce Karim ?</p><div class="ask-b"><span class="yes">Oui</span><span>Non</span></div></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="j-slide" aria-roledescription="slide" aria-label="Étape 5 sur 6">
+          <div class="j-text">
+            <div class="j-meta"><span class="j-num">05</span><span class="kind dark">Rapport</span></div>
+            <h3>Plan de jeu et équipe</h3>
+            <p>Ce qui a marché, ce qui n'a pas marché, et à quel point l'équipe a appliqué chaque consigne, avec les extraits vidéo pour le montrer.</p>
+            <dl class="j-facts"><div><dt>Plan de jeu</dt><dd>Ce qui a marché ou non</dd></div><div><dt>Équipe</dt><dd>Respect de chaque consigne</dd></div><div><dt>Preuves</dt><dd>Extraits horodatés</dd></div></dl>
+          </div>
+          <div class="j-visual">
+            <div class="mock">
+              <div class="mock-bar"><span class="mdots"><i></i><i></i><i></i></span><span>Rapport · Plan de jeu</span></div>
+              <div class="tr">
+                <div class="tr-top"><div><span class="mlabel">Respect du plan de jeu</span><b>58%</b></div><div class="seg"><i class="ok" style="flex:2"></i><i class="mid" style="flex:3"></i><i class="bad" style="flex:3"></i></div></div>
+                <div class="mg"><div class="mg-t"><span>Pressing haut après la perte</span><b>17/29</b></div><div class="mg-b"><i class="mid" style="width:59%"></i></div></div>
+                <div class="mg"><div class="mg-t"><span>Relance courte depuis le gardien</span><b>11/29</b></div><div class="mg-b"><i class="bad" style="width:38%"></i></div></div>
+                <div class="mg"><div class="mg-t"><span>Bloc compact, 30 m max</span><b>81%</b></div><div class="mg-b"><i class="ok" style="width:81%"></i></div></div>
+                <div class="tr-foot"><span class="w">3 choses qui ont marché</span><span class="l">3 choses qui n'ont pas marché</span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="j-slide" aria-roledescription="slide" aria-label="Étape 6 sur 6">
+          <div class="j-text">
+            <div class="j-meta"><span class="j-num">06</span><span class="kind dark">Rapport</span></div>
+            <h3>Chaque joueur</h3>
+            <p>Chaque joueur reçoit deux notes : sa note globale du match, et une note de respect des consignes que vous lui avez données.</p>
+            <dl class="j-facts"><div><dt>Match</dt><dd>Note sur 10</dd></div><div><dt>Consignes</dt><dd>Score par joueur</dd></div><div><dt>Détail</dt><dd>Réussites, manques</dd></div></dl>
+          </div>
+          <div class="j-visual">
+            <div class="mock">
+              <div class="mock-bar"><span class="mdots"><i></i><i></i><i></i></span><span>Rapport · Individuel</span></div>
+              <div class="pr-m">
+                <div class="pr-head"><span class="pnum-s big">3</span><div><b>Moussa</b><span>Latéral gauche</span></div></div>
+                <div class="pr-scores"><div><span class="mlabel">Note du match</span><b class="ok">7.3<small>/10</small></b></div><div><span class="mlabel">Respect des consignes</span><b class="mid">73<small>%</small></b></div></div>
+                <div class="mg"><div class="mg-t"><span>Dédoubler à gauche</span><b>6/8</b></div><div class="mg-b"><i class="ok" style="width:75%"></i></div></div>
+                <div class="mg"><div class="mg-t"><span>Presser dans les 5 s après la perte</span><b>6/9</b></div><div class="mg-b"><i class="mid" style="width:67%"></i></div></div>
+                <div class="pr-notes"><span class="w">4 centres délivrés · 55:02</span><span class="l">Resté derrière sur 2 transitions · 67:21</span></div>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="j-slide j-final" aria-roledescription="slide" aria-label="Fin du match">
+          <div class="j-text">
+            <div class="j-meta"><span class="j-num">FT</span><span class="kind green">Fin du match</span></div>
+            <h3>Votre débrief est prêt avant le prochain entraînement.</h3>
+            <p>Du coup de sifflet final à un rapport complet en quelques minutes. Votre staff passe sa semaine à entraîner, pas à rembobiner la vidéo.</p>
+            <a class="btn btn-ink" href="#access">Demander l'accès <span class="arrow">→</span></a>
+          </div>
+          <div class="j-visual">
+            <div class="ft">
+              <div class="ft-score"><span class="mlabel">Fin du match</span><div class="ft-teams"><span>Northfield FC</span><b>2 – 1</b><span>Riverside United</span></div></div>
+              <ul class="ft-list"><li><b>Rapport prêt</b><span>3 sections</span></li><li><b>Joueurs notés</b><span>11 sur 11</span></li><li><b>Extraits liés</b><span>47</span></li><li><b>Priorité à l'entraînement</b><span>Relance sous pression</span></li></ul>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <div class="j-nav">
+        <button type="button" class="j-arrow" id="j-prev" aria-label="Étape précédente"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <ol class="j-progress" id="j-progress">
+          <li><button type="button" aria-label="Étape 1 : envoi"><i></i><span>Envoi</span></button></li>
+          <li><button type="button" aria-label="Étape 2 : terrain"><i></i><span>Terrain</span></button></li>
+          <li><button type="button" aria-label="Étape 3 : plan de jeu"><i></i><span>Plan de jeu</span></button></li>
+          <li><button type="button" aria-label="Étape 4 : analyse"><i></i><span>Analyse</span></button></li>
+          <li><button type="button" aria-label="Étape 5 : rapport équipe"><i></i><span>Rapport équipe</span></button></li>
+          <li><button type="button" aria-label="Étape 6 : rapport joueur"><i></i><span>Rapport joueur</span></button></li>
+          <li><button type="button" aria-label="Fin du match"><i></i><span>Fin du match</span></button></li>
+        </ol>
+        <button type="button" class="j-arrow next" id="j-next" aria-label="Étape suivante"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="report">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="label">03 — Rapport</p>
+      <div class="body">
+        <h2>Trois niveaux d'analyse, un seul rapport.</h2>
+        <p class="lead">Le plan de jeu, l'équipe et chaque joueur. Voici un exemple de rapport, tel que votre staff le parcourrait.</p>
+      </div>
+    </div>
+    <div class="rapp reveal" id="rapp">
+      <div class="rapp-top">
+        <div class="rapp-title"><b>Northfield FC 2–1 Riverside United</b><span class="label">J12 · Rapport de match · Exemple</span></div>
+        <div class="rtabs" role="tablist" aria-label="Sections du rapport (exemple animé)">
+          <button type="button" role="tab" data-tab="plan" aria-selected="true">Plan de jeu</button>
+          <button type="button" role="tab" data-tab="team" aria-selected="false" tabindex="-1">Équipe</button>
+          <button type="button" role="tab" data-tab="ind" aria-selected="false" tabindex="-1">Individuel</button>
+        </div>
+      </div>
+      <div class="rapp-body" id="rapp-body">
+        <div class="rpane" data-pane="plan" role="tabpanel" aria-label="Plan de jeu">
+          <div class="rsum">
+            <div><span class="label">Respect du plan de jeu</span><b class="big">58%</b></div>
+            <div class="split"><span><i class="ok"></i>2 respectées</span><span><i class="mid"></i>3 partielles</span><span><i class="bad"></i>3 non respectées</span></div>
+          </div>
+          <h4 class="rh ok">Ce qui a marché</h4>
+          <ol class="finds ok">
+            <li><b>Bloc compact, 30 m max</b><p>Tenu 81 % du temps. Seulement 2 tirs concédés dans l'axe.</p><span class="clips">Extraits · 12:40 · 33:05 · 61:18</span></li>
+            <li><b>Pressing haut la première heure</b><p>11 récupérations dans le camp adverse, dont celle qui amène l'ouverture du score.</p><span class="clips">Extraits · 22:51 · 38:12 · 47:30</span></li>
+            <li><b>Dédoublements à gauche après 50'</b><p>Moussa (3) a délivré 4 centres. Le but de la victoire vient de l'un d'eux.</p><span class="clips">Extraits · 55:02 · 71:44 · 77:58</span></li>
+          </ol>
+          <h4 class="rh bad">Ce qui n'a pas marché</h4>
+          <ol class="finds bad">
+            <li><b>Relance courte depuis le gardien</b><p>Abandonnée après 30'. 18 dégagements longs, dont 14 perdus.</p><span class="clips">Extraits · 31:10 · 44:26 · 58:03</span></li>
+            <li><b>Renverser le jeu côté faible</b><p>5 renversements sur 22 occasions. Le jeu est resté à droite.</p><span class="clips">Extraits · 36:48 · 52:15 · 66:40</span></li>
+            <li><b>Le pressing après 65'</b><p>Seulement 3 pertes sur 9 suivies d'un pressing en moins de 5 s. Le bloc médian ne s'est jamais mis en place.</p><span class="clips">Extraits · 67:21 · 73:09 · 84:37</span></li>
+          </ol>
+          <div class="takeaway"><span class="label">Priorité à l'entraînement</span><p>La relance sous pression sur les sorties de but, et des renversements plus rapides côté faible.</p></div>
+        </div>
+        <div class="rpane" data-pane="team" role="tabpanel" aria-label="Équipe" hidden>
+          <h4 class="rh">Consignes · respect par l'équipe</h4>
+          <div id="team-rules"></div>
+          <h4 class="rh">Statistiques d'équipe <span>Détail par période</span></h4>
+          <div class="tstats-head"><span></span><span>Northfield</span><span></span><span>Riverside</span><span></span></div>
+          <div id="team-stats"></div>
+        </div>
+        <div class="rpane" data-pane="ind" role="tabpanel" aria-label="Individuel" hidden>
+          <div id="ind-list"></div>
+          <div id="ind-detail" hidden></div>
+        </div>
+      </div>
+      <div class="cursor rc" id="rcursor" aria-hidden="true"><svg viewBox="0 0 16 20" width="16" height="20"><path d="M1 1 L1 15.5 L4.8 12 L7.4 18.2 L9.8 17.2 L7.3 11.2 L12.6 11.2 Z" fill="#0b0d0c" stroke="#ffffff" stroke-width="1.2" stroke-linejoin="round"/></svg></div>
+    </div>
+  </div>
+</section>
+
+<section id="benefits">
+  <div class="wrap">
+    <div class="sec-head reveal">
+      <p class="label">04 — Bénéfices</p>
+      <div class="body">
+        <h2>Moins de vidéo. Plus de terrain.</h2>
+      </div>
+    </div>
+    <div class="gains reveal">
+      <div class="gain"><h3>Temps</h3><p>Fini de revoir 90 minutes pour préparer le débrief.</p></div>
+      <div class="gain"><h3>Précision</h3><p>Des statistiques de niveau professionnel, match après match.</p></div>
+      <div class="gain"><h3>Décisions</h3><p>Vos intuitions confirmées ou remises en question par les faits.</p></div>
+      <div class="gain"><h3>Progression</h3><p>Des séances ciblées, et des joueurs qui savent quoi travailler.</p></div>
+    </div>
+    <div class="statement reveal">
+      <p>Chaque club pro a son analyste vidéo. <span>Pourquoi pas le vôtre ?</span></p>
+    </div>
+  </div>
+</section>
+
+<section class="access" id="access">
+  <div class="wrap">
+    <div class="reveal">
+      <p class="label">Accès anticipé</p>
+      <h2 style="margin-top:16px">Rejoignez les premiers staffs à bord.</h2>
+      <p class="lead">L'accès ouvre par étapes. Laissez vos coordonnées pour recevoir la date de lancement, les tarifs et les offres.</p>
+      <ul>
+        <li>Accès prioritaire au lancement</li>
+        <li>Tarif fondateur pour les premiers clubs</li>
+        <li>Sans engagement</li>
+      </ul>
+    </div>
+    <form class="form reveal" id="access-form" novalidate>
+      <div class="field"><label for="email">E-mail professionnel</label><input id="email" type="email" name="email" placeholder="nom@club.fr" autocomplete="email" required></div>
+      <div class="row2">
+        <div class="field"><label for="club">Club</label><input id="club" type="text" name="club" placeholder="Nom du club" autocomplete="organization" maxlength="120"></div>
+        <div class="field"><label for="role">Fonction</label>
+          <select id="role" name="role">
+            <option value="">Choisir</option>
+            <option>Entraîneur principal</option>
+            <option>Entraîneur adjoint</option>
+            <option>Analyste vidéo</option>
+            <option>Directeur sportif</option>
+            <option>Éducateur jeunes / formation</option>
+            <option>Autre</option>
+          </select>
+        </div>
+      </div>
+      <label class="consent" for="consent"><input id="consent" type="checkbox" required> J'accepte de recevoir des nouvelles sur le lancement, les tarifs et les offres de Ciprio. Désinscription possible à tout moment. Voir notre <a href="/fr/privacy">politique de confidentialité</a>.</label>
+      <button class="btn" type="submit">Demander l'accès <span class="arrow">→</span></button>
+      <p class="form-msg" id="form-msg" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+</section>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="top">
+      <div class="about-f">
+        <a class="brand" href="/fr"><img src="/logo.svg" width="28" height="28" alt=""><b>Ciprio</b></a>
+        <p>L'analyse vidéo pour les staffs de football. Votre plan de jeu, mesuré sur le terrain.</p>
+      </div>
+      <div>
+        <h4>Pages</h4>
+        <ul><li><a href="/fr">Accueil</a></li><li><a href="/fr/blog">Blog</a></li><li><a href="/fr/contact">Contact</a></li><li><a href="/fr/about">À propos</a></li></ul>
+      </div>
+      <div>
+        <h4>Produit</h4>
+        <ul><li><a href="/fr#method">Méthode</a></li><li><a href="/fr#report">Rapport</a></li><li><a href="/fr#access">Demander l'accès</a></li></ul>
+      </div>
+      <div>
+        <h4>Légal</h4>
+        <ul><li><a href="/fr/privacy">Politique de confidentialité</a></li><li><a href="/fr/terms">Conditions d'utilisation</a></li><li><a href="/fr/legal">Mentions légales</a></li></ul>
+      </div>
+    </div>
+    <div class="bottom">
+      <span>© 2026 Ciprio · Toulouse, France</span>
+      <span>Ce site n'utilise ni cookies ni traceurs.</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* Planche tactique animée : match simulé (illustratif), chrono, score, vue équipe / vue joueur et curseur de démonstration */
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.getElementById("pitch-svg");
+  if (!svg) return;
+  const $ = id => document.getElementById(id);
+  const board = $("board");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const SPEED = 75;                // secondes de match par seconde réelle (90 min ≈ 72 s)
+  const HOME_BASE = [[6,34],[28,12],[25,27],[25,41],[28,56],[44,22],[40,34],[44,46],[60,14],[62,34],[60,54]];
+  const AWAY_BASE = HOME_BASE.map(([x, y]) => [105 - x, 68 - y]);
+  const NUMBERS = [1, 3, 4, 5, 2, 6, 8, 10, 7, 9, 11];
+  const NAMES = ["Nathan", "Moussa", "Samir", "Harry", "Mateo", "Oliver", "Ethan", "Yassine", "Lucas", "Jack", "Diego"];
+  const POS = ["Gardien", "Latéral gauche", "Défenseur central", "Défenseur central", "Latéral droit", "Milieu central", "Milieu défensif", "Milieu central", "Ailier gauche", "Attaquant", "Ailier droit"];
+  const ROLE = ["gk", "def", "def", "def", "def", "mid", "mid", "mid", "fw", "fw", "fw"];
+  const tag = i => NAMES[i] + " (" + NUMBERS[i] + ")";
+  const DEMO_ORDER = [9, 1, 7, 10, 8, 5, 2, 4];   // Jack, Moussa, Yassine, Diego, Lucas, Oliver, Samir, Mateo
+
+  // consignes d'équipe : certaines sont remplacées en cours de match (slot = ligne affichée)
+  const sin = Math.sin;
+  const RULES = [
+    { id: "press",   slot: 0, from: 0,  to: 80, label: "Presser dans les 5 s après la perte", detail: "après chaque perte",       rate: 29, f: m => m <= 65 ? .72 : .72 - (m - 65) / 25 * .12 },
+    { id: "build",   slot: 1, from: 0,  to: 30, label: "Relancer court depuis le gardien",  detail: "relances sur sortie de but",       rate: 29, f: m => .8 - m / 30 * .1 },
+    { id: "block",   slot: 2, from: 0,  to: 65, label: "Bloc compact, 30 m max",             detail: "distance entre les lignes",    pct: true, f: m => .81 + .07 * sin(m / 9) - (m > 40 && m < 48 ? .09 : 0) },
+    { id: "wide",    slot: 3, from: 0,  to: 50, label: "Les ailiers attaquent la surface",              detail: "attaques placées sur les côtés", rate: 14, f: m => .48 + .1 * sin(m / 14) },
+    { id: "switch",  slot: 1, from: 30, to: 90, label: "Renverser le jeu côté faible",        detail: "nouvelle consigne à 30'",    rate: 22, f: m => .34 + .06 * sin(m / 7) },
+    { id: "overlap", slot: 3, from: 50, to: 90, label: "Les latéraux dédoublent à gauche",      detail: "nouvelle consigne à 50'",    rate: 16, f: m => .56 + .08 * sin(m / 6) },
+    { id: "midblock",slot: 2, from: 65, to: 90, label: "Redescendre en bloc médian",               detail: "nouvelle consigne à 65'",    pct: true, f: m => .42 + .05 * sin(m / 5) },
+    { id: "tempo",   slot: 0, from: 80, to: 90, label: "Garder le ballon, ralentir le rythme",       detail: "nouvelle consigne à 80'",    pct: true, f: m => .79 + .04 * sin(m) }
+  ];
+
+  // événements : [minute, type, texte, joueur concerné ou équipe qui marque]
+  const EVENTS = [
+    [8,  "ok",   tag(8) + " élimine son vis-à-vis à gauche", 8],
+    [12, "ok",   "Relance courte réussie sur sortie de but"],
+    [19, "bad",  tag(7) + " lent au repli", 7],
+    [23, "goal", "But · Northfield FC", "h"],
+    [27, "ok",   tag(7) + " casse une ligne d'une passe", 7],
+    [34, "bad",  tag(1) + " n'a pas pressé après la perte", 1],
+    [38, "bad",  "Côté faible ignoré · le jeu reste à droite"],
+    [42, "mid",  "Bloc étiré à 36 m"],
+    [48, "bad",  tag(9) + " ne presse pas le défenseur central", 9],
+    [51, "goal", "But · Riverside United", "a"],
+    [55, "ok",   tag(1) + " dédouble et centre", 1],
+    [57, "ok",   tag(9) + " entre dans la surface", 9],
+    [63, "bad",  tag(10) + " reste écarté au lieu de presser", 10],
+    [68, "bad",  "Bloc médian ignoré · ligne toujours haute"],
+    [71, "bad",  tag(6) + " n'a pas pressé après la perte", 6],
+    [78, "goal", "But · Northfield FC", "h"],
+    [82, "ok",   tag(5) + " récupère le ballon en 2,4 s", 5],
+    [87, "ok",   "Possession conservée · 14 passes d'affilée"]
+  ];
+
+  // profils par poste (valeurs sur 90 minutes) et consignes individuelles
+  const PROFILE = {
+    gk:  { passes: 30, acc: .68, duels: 2,  press: 0,  rec: 4, km: 5.4 },
+    def: { passes: 54, acc: .86, duels: 9,  press: 8,  rec: 7, km: 10.2 },
+    mid: { passes: 62, acc: .84, duels: 10, press: 14, rec: 8, km: 11.4 },
+    fw:  { passes: 27, acc: .73, duels: 11, press: 12, rec: 3, km: 10.6 }
+  };
+  const PLAYER_RULES = {
+    gk:  [["Relancer court depuis le gardien", 20, .62], ["Couvrir derrière une ligne haute", 6, .83]],
+    def: [["Presser dans les 5 s après la perte", 9, .66], ["Tenir la ligne à 30 m", 12, .78]],
+    mid: [["Presser dans les 5 s après la perte", 12, .64], ["Renverser le jeu côté faible", 10, .4]],
+    fw:  [["Presser le défenseur central", 12, .55], ["Attaquer la surface", 9, .5]]
+  };
+  const EXTRA_RULE = { 1: ["Dédoubler à gauche", 8, .62], 9: ["Conserver le ballon pour les appels", 8, .58] };
+  const vary = i => ((i * 37 + 11) % 10) / 10;   // variation stable par joueur, entre 0 et 0.9
+
+  const pawn = (g, x, y, r, num, fill, ink) => {
+    const grp = document.createElementNS(NS, "g");
+    const c = document.createElementNS(NS, "circle"); c.setAttribute("r", r); c.setAttribute("fill", fill);
+    const tx = document.createElementNS(NS, "text"); tx.textContent = num;
+    tx.setAttribute("text-anchor", "middle"); tx.setAttribute("dominant-baseline", "central");
+    tx.setAttribute("font-family", "Geist Mono, monospace"); tx.setAttribute("font-size", "1.9"); tx.setAttribute("font-weight", "500"); tx.setAttribute("fill", ink);
+    grp.append(c, tx); g.appendChild(grp);
+    return { x, y, bx: x, by: y, el: grp };
+  };
+  const home = HOME_BASE.map(([x, y], i) => Object.assign(pawn($("home"), x, y, 2.05, NUMBERS[i], "#e9eeeb", "#0c100e"), { ph: i * 1.7 }));
+  const away = AWAY_BASE.map(([x, y], i) => Object.assign(pawn($("away"), x, y, 1.95, NUMBERS[i], "#5d6661", "#e9eeeb"), { ph: i * 2.3 }));
+  const pressLines = [0, 1, 2].map(() => { const l = document.createElementNS(NS, "line"); $("press-lines").appendChild(l); return l; });
+
+  let t = 0, last = 0, running = false, visible = true, evIdx = 0, ftHold = 0, lastNow = 0;
+  let score = { h: 0, a: 0 }, focusFlash = null, selected = -1;
+  const ball = { x: 52.5, y: 34, fx: 52.5, fy: 34, tx: 52.5, ty: 34, k: 1, dur: .6, hold: .4, team: "h", idx: 6, left: 4 };
+  let press = null;                // { since, wonAt, won } quand l'équipe analysée vient de perdre le ballon
+
+  const rnd = (a, b) => a + Math.random() * (b - a);
+  const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+  const players = s => s === "h" ? home : away;
+  const nearest = (list, x, y, n, skip) => list.map((p, i) => ({ p, i, d: Math.hypot(p.x - x, p.y - y) }))
+    .filter(o => o.i !== skip).sort((a, b) => a.d - b.d).slice(0, n);
+
+  function nextAction(now) {
+    const own = players(ball.team);
+    ball.left--;
+    if (ball.left <= 0) {
+      // perte de balle : l'adversaire le plus proche récupère
+      const lost = ball.team === "h";
+      ball.team = lost ? "a" : "h";
+      const n = nearest(players(ball.team), ball.x, ball.y, 1)[0];
+      ball.idx = n.i;
+      ball.left = lost ? Math.round(rnd(1, 3)) : Math.round(rnd(3, 7));
+      if (lost) press = { since: now };
+      else if (press) { press.won = clamp((now - press.since) * 1.6, 1.8, 4.9).toFixed(1); press.wonAt = now; }
+      startPass(n.p.x, n.p.y, .3);
+      return;
+    }
+    // passe vers un partenaire, de préférence vers l'avant
+    const dir = ball.team === "h" ? 1 : -1;
+    const opts = nearest(own, ball.x, ball.y, 6, ball.idx).filter(o => o.i !== 0 || Math.random() < .15);
+    opts.forEach(o => o.s = dir * (o.p.x - ball.x) + rnd(-14, 14));
+    opts.sort((a, b) => b.s - a.s);
+    const pick = opts[Math.floor(Math.random() * Math.min(3, opts.length))];
+    ball.idx = pick.i;
+    startPass(clamp(pick.p.x + dir * rnd(1, 4), 1, 104), clamp(pick.p.y + rnd(-2, 2), 1, 67), clamp(pick.d / 28 + .3, .45, 1.3));
+  }
+  function startPass(x, y, dur) {
+    ball.fx = ball.x; ball.fy = ball.y; ball.tx = x; ball.ty = y; ball.k = 0; ball.dur = dur; ball.hold = rnd(.25, .6);
+    const pl = $("pass-line");
+    pl.setAttribute("x1", ball.fx); pl.setAttribute("y1", ball.fy); pl.setAttribute("x2", x); pl.setAttribute("y2", y);
+  }
+
+  function step(dt, now) {
+    if (ball.k < 1) {
+      ball.k = Math.min(1, ball.k + dt / ball.dur);
+      const e = 1 - Math.pow(1 - ball.k, 2);
+      ball.x = ball.fx + (ball.tx - ball.fx) * e; ball.y = ball.fy + (ball.ty - ball.fy) * e;
+    } else {
+      const o = players(ball.team)[ball.idx];
+      ball.x += (o.x - ball.x) * Math.min(1, dt * 6); ball.y += (o.y - ball.y) * Math.min(1, dt * 6);
+      ball.hold -= dt;
+      if (ball.hold <= 0) nextAction(now);
+    }
+    if (press && !press.wonAt && now - press.since > 2.6) press = null;
+    if (press && press.wonAt && now - press.wonAt > 1.4) press = null;
+
+    // blocs d'équipe qui coulissent avec le ballon
+    const hp = ball.team === "h";
+    const hs = clamp((ball.x - 52.5) * .42 + (hp ? 7 : -5), -12, 22);
+    const as = clamp((ball.x - 52.5) * .42 + (hp ? 5 : -7), -22, 12);
+    const ys = (ball.y - 34) * .28;
+    const pressers = press && !press.wonAt ? nearest(home, ball.x, ball.y, 3).map(o => o.i) : [];
+    const move = (list, shift, side) => list.forEach((p, i) => {
+      let tx = p.bx + (i === 0 ? shift * .12 : shift) + Math.sin(now * .9 + p.ph) * 1.2;
+      let ty = p.by + (i === 0 ? ys * .3 : ys) + Math.cos(now * .7 + p.ph) * 1.2;
+      if (side === ball.team && i === ball.idx) { tx = ball.k < 1 ? ball.tx : p.x; ty = ball.k < 1 ? ball.ty : p.y; }
+      if (side === "h" && pressers.includes(i)) { tx = ball.x - 2.2; ty = ball.y + (i % 2 ? 1.8 : -1.8); }
+      if (side !== ball.team && !pressers.length) {
+        const n = nearest(list, ball.x, ball.y, 1)[0];
+        if (n && n.i === i) { tx = (tx + ball.x) / 2; ty = (ty + ball.y) / 2; }
+      }
+      const s = Math.min(1, dt * (pressers.includes(i) && side === "h" ? 3.2 : 1.8));
+      p.x = clamp(p.x + (tx - p.x) * s, 1.5, 103.5); p.y = clamp(p.y + (ty - p.y) * s, 1.5, 66.5);
+    });
+    move(home, hs, "h"); move(away, as, "a");
+  }
+
+  function draw(now) {
+    home.concat(away).forEach(p => p.el.setAttribute("transform", "translate(" + p.x.toFixed(2) + " " + p.y.toFixed(2) + ")"));
+    const b = $("ball"); b.setAttribute("cx", ball.x.toFixed(2)); b.setAttribute("cy", ball.y.toFixed(2));
+    $("pass-line").setAttribute("opacity", ball.k < 1 ? 1 : 0);
+    const ring = $("focus-ring"), lab = $("focus-label");
+    if (selected >= 0) {
+      const f = home[selected];
+      ring.setAttribute("cx", f.x.toFixed(2)); ring.setAttribute("cy", f.y.toFixed(2));
+      lab.setAttribute("x", f.x.toFixed(2)); lab.setAttribute("y", (f.y - 4.8).toFixed(2));
+      const flash = focusFlash && now - focusFlash.at < 2.4 ? focusFlash.color : "#e9eeeb";
+      ring.setAttribute("stroke", flash); lab.setAttribute("fill", flash);
+      ring.setAttribute("opacity", 1); lab.setAttribute("opacity", 1);
+    } else { ring.setAttribute("opacity", 0); lab.setAttribute("opacity", 0); }
+
+    const zone = $("press-zone"), lines = $("press-lines"), pl = $("press-label");
+    if (press) {
+      zone.setAttribute("x", (clamp(ball.x, 11, 94) - 11).toFixed(2)); zone.setAttribute("y", (clamp(ball.y, 13, 55) - 13).toFixed(2));
+      zone.setAttribute("opacity", 1); lines.setAttribute("opacity", press.wonAt ? 0 : 1);
+      nearest(home, ball.x, ball.y, 3).forEach((o, i) => {
+        const l = pressLines[i]; l.setAttribute("x1", o.p.x.toFixed(2)); l.setAttribute("y1", o.p.y.toFixed(2)); l.setAttribute("x2", ball.x.toFixed(2)); l.setAttribute("y2", ball.y.toFixed(2));
+      });
+      pl.textContent = press.wonAt ? "ballon récupéré en " + press.won + " s" : "contre-pressing";
+      pl.setAttribute("x", clamp(ball.x, 12, 93).toFixed(2)); pl.setAttribute("y", (clamp(ball.y, 13, 55) - 14.6).toFixed(2)); pl.setAttribute("opacity", 1);
+    } else { zone.setAttribute("opacity", 0); lines.setAttribute("opacity", 0); pl.setAttribute("opacity", 0); }
+  }
+
+  // lignes de consigne (vue équipe et vue joueur partagent le même rendu)
+  function ruleRow(label, detail, isNew) {
+    const el = document.createElement("div");
+    el.className = "rule" + (isNew ? " new" : "");
+    el.innerHTML = '<div class="top"><span class="lbl"></span><b></b></div><div class="bar"><i></i></div><p class="note"><span class="st-txt"></span> · <span class="dt"></span></p>';
+    el.querySelector(".lbl").textContent = label;
+    el.querySelector(".dt").textContent = detail;
+    return { el, lbl: el.querySelector(".lbl"), v: el.querySelector(".top b"), bar: el.querySelector(".bar i"), st: el.querySelector(".st-txt") };
+  }
+  function paintRow(r, text, ratio, ready) {
+    const [cls, label] = !ready ? ["", "En cours"] : ratio >= .75 ? ["ok", "Respectée"] : ratio >= .5 ? ["mid", "Partielle"] : ["bad", "Non respectée"];
+    r.v.textContent = text; r.bar.style.width = (ready ? Math.round(ratio * 100) : 0) + "%";
+    r.bar.className = cls === "ok" ? "" : cls; r.st.textContent = label; r.st.className = "st-txt " + cls;
+  }
+
+  // vue équipe : une ligne par slot, remplacée quand le staff change de consigne
+  const box = $("rules"), slots = [];
+  function updateRules(m, animate) {
+    for (let s = 0; s < 4; s++) {
+      const rule = RULES.find(r => r.slot === s && m >= r.from && m < r.to) || RULES.filter(r => r.slot === s).pop();
+      if (!slots[s] || slots[s].id !== rule.id) {
+        const fresh = Object.assign(ruleRow(rule.label, rule.detail, animate && slots[s]), { id: rule.id });
+        if (rule.from > 0) { const n = document.createElement("span"); n.className = "tag-new"; n.textContent = "Nouveau"; fresh.lbl.append(" ", n); }
+        if (slots[s]) { box.replaceChild(fresh.el, slots[s].el); if (animate) pushFeed(rule.from, "info", "Nouvelle consigne · " + rule.label); }
+        else box.appendChild(fresh.el);
+        slots[s] = fresh;
+      }
+      const el = Math.max(0, m - rule.from);
+      if (rule.pct) { const ratio = clamp(rule.f(m), .3, .97); paintRow(slots[s], el >= 1 ? Math.round(ratio * 100) + "%" : "–", ratio, el >= 1); }
+      else { const tot = Math.round(rule.rate * el / 90), ok = Math.round(tot * clamp(rule.f(m), 0, 1)); paintRow(slots[s], ok + "/" + tot, tot ? ok / tot : 0, tot > 0); }
+    }
+  }
+
+  // vue joueur : identité, note, statistiques et consignes individuelles
+  let pRows = [], pFor = -1;
+  function playerEvents(i, m) { return EVENTS.filter(e => e[0] <= m && e[3] === i); }
+  function updatePlayer(m) {
+    const i = selected, role = ROLE[i], pr = PROFILE[role], v = vary(i), sc = m / 90, evs = playerEvents(i, m);
+    if (pFor !== i) {
+      pFor = i;
+      $("p-num").textContent = NUMBERS[i]; $("p-name").textContent = NAMES[i]; $("p-pos").textContent = POS[i];
+      const list = PLAYER_RULES[role].concat(EXTRA_RULE[i] ? [EXTRA_RULE[i]] : []);
+      $("p-rules").innerHTML = "";
+      pRows = list.map(([label, rate, base]) => { const r = Object.assign(ruleRow(label, "consigne individuelle"), { rate, base }); $("p-rules").appendChild(r.el); return r; });
+    }
+    const bad = evs.filter(e => e[1] === "bad").length, good = evs.filter(e => e[1] === "ok").length;
+    const rating = clamp(6.1 + v * 1.3 + good * .4 - bad * .45 + (score.h - score.a) * .1, 4.5, 9.2);
+    const rEl = $("p-rating"); rEl.textContent = m < 1 ? "–" : rating.toFixed(1);
+    rEl.className = m < 1 ? "" : rating >= 7 ? "ok" : rating >= 6 ? "mid" : "bad";
+    const att = Math.round(pr.passes * sc * (.85 + v * .3)), comp = Math.round(att * (pr.acc + v * .06));
+    const duels = Math.round(pr.duels * sc * (.8 + v * .4)), won = Math.round(duels * (.42 + v * .25));
+    const stats = [
+      ["Minutes", Math.floor(m) + "'"],
+      ["Passes", comp + "/" + att],
+      ["Duels gagnés", won + "/" + duels],
+      ["Pressings", String(Math.round(pr.press * sc * (.7 + v * .6)))],
+      ["Récupérations", String(Math.round(pr.rec * sc * (.7 + v * .6)))],
+      ["Distance", (pr.km * sc * (.92 + v * .16)).toFixed(1) + " km"]
+    ];
+    const grid = $("p-stats");
+    if (!grid.children.length) stats.forEach(() => grid.insertAdjacentHTML("beforeend", '<div><span class="label"></span><b></b></div>'));
+    stats.forEach(([k, val], j) => { grid.children[j].firstChild.textContent = k; grid.children[j].lastChild.textContent = val; });
+    pRows.forEach((r, j) => {
+      const tot = Math.round(r.rate * sc), ratio = clamp(r.base + (v - .45) * .2 - (j === 0 ? bad * .12 : 0) + (j === 0 ? good * .05 : 0), .15, .95);
+      const ok = Math.round(tot * ratio);
+      paintRow(r, ok + "/" + tot, tot ? ok / tot : 0, tot > 0);
+    });
+  }
+
+  function select(i) {
+    selected = i;
+    const team = i < 0;
+    $("team-view").hidden = !team; $("player-view").hidden = team;
+    $("team-btn").classList.toggle("on", team);
+    $("sel-chip").textContent = team ? "Cliquez sur un joueur du terrain" : tag(i) + " · " + POS[i];
+    $("sel-chip").classList.toggle("on", !team);
+    home.forEach((p, j) => p.el.classList.toggle("sel", j === i));
+    if (!team) { $("focus-label").textContent = NAMES[i]; $("p-stats").innerHTML = ""; pFor = -1; updatePlayer(Math.min(90, t / 60)); }
+  }
+
+  function pushFeed(m, kind, text) {
+    const li = document.createElement("li");
+    li.className = "new";
+    li.innerHTML = '<span class="m"></span><span class="d ' + kind + '"></span><span class="x"></span>';
+    li.querySelector(".m").textContent = m + "'";
+    li.querySelector(".x").textContent = text;
+    const feed = $("feed");
+    feed.prepend(li);
+    while (feed.children.length > 4) feed.lastElementChild.remove();
+  }
+  function addEvent([m, kind, text, extra]) {
+    if (kind === "goal") {
+      score[extra]++; $("score-h").textContent = score.h; $("score-a").textContent = score.a;
+      text += " · " + score.h + "–" + score.a;
+    }
+    if (typeof extra === "number" && extra === selected) focusFlash = { at: lastNow, color: kind === "bad" ? "#e5484d" : "#12a150" };
+    pushFeed(m, kind, text);
+  }
+
+  function reset() {
+    t = 0; evIdx = 0; score = { h: 0, a: 0 }; press = null; ftHold = 0;
+    $("score-h").textContent = 0; $("score-a").textContent = 0; $("feed").innerHTML = "";
+    box.innerHTML = ""; slots.length = 0;
+  }
+
+  function hud(animate) {
+    const m = Math.min(90, t / 60);
+    const s = Math.floor(Math.min(t, 5400));
+    $("clock").textContent = String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0");
+    $("period").textContent = t >= 5400 ? "Fin du match" : t >= 2700 ? "2e mi-temps" : "1re mi-temps";
+    while (evIdx < EVENTS.length && EVENTS[evIdx][0] <= m) addEvent(EVENTS[evIdx++]);
+    updateRules(m, animate);
+    if (selected >= 0) updatePlayer(m);
+  }
+
+  // curseur de démonstration : clique tour à tour sur un joueur, puis revient à la vue équipe
+  const cursor = $("cursor");
+  const demo = { phase: "wait", until: 3, order: 0, pausedUntil: 0, from: null, start: 0, target: null };
+  function targetPoint(target) {
+    const br = board.getBoundingClientRect();
+    if (target === "team") { const r = $("team-btn").getBoundingClientRect(); return { x: r.left - br.left + r.width * .5, y: r.top - br.top + r.height * .6 }; }
+    const pt = svg.createSVGPoint(); pt.x = home[target].x; pt.y = home[target].y;
+    const p = pt.matrixTransform(svg.getScreenCTM());
+    return { x: p.x - br.left, y: p.y - br.top };
+  }
+  let cur = { x: 0, y: 0 };
+  function placeCursor() { cursor.style.transform = "translate(" + cur.x.toFixed(1) + "px," + cur.y.toFixed(1) + "px)"; }
+  function runDemo(now) {
+    if (now < demo.pausedUntil) { cursor.classList.remove("show"); return; }
+    if (demo.phase === "wait") {
+      if (now < demo.until) return;
+      demo.target = selected >= 0 ? "team" : DEMO_ORDER[demo.order++ % DEMO_ORDER.length];
+      if (!cursor.classList.contains("show")) { const br = board.getBoundingClientRect(); cur = { x: br.width * .55, y: br.height * .95 }; }
+      cursor.classList.add("show");
+      demo.from = { x: cur.x, y: cur.y }; demo.start = now; demo.phase = "move";
+    }
+    if (demo.phase === "move") {
+      const k = clamp((now - demo.start) / 1.1, 0, 1), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2, p = targetPoint(demo.target);
+      cur.x = demo.from.x + (p.x - demo.from.x) * e; cur.y = demo.from.y + (p.y - demo.from.y) * e;
+      placeCursor();
+      if (k >= 1) {
+        cursor.classList.remove("click"); void cursor.offsetWidth; cursor.classList.add("click");
+        select(demo.target === "team" ? -1 : demo.target);
+        demo.phase = "wait"; demo.until = now + (demo.target === "team" ? 3.5 : 7);
+      }
+    } else if (selected >= 0) { const p = targetPoint(selected); cur.x += (p.x - cur.x) * .15; cur.y += (p.y - cur.y) * .15; placeCursor(); }
+  }
+  // un vrai clic du visiteur prend la main et met la démo en pause
+  const userTakeOver = () => { demo.pausedUntil = lastNow + 15; demo.phase = "wait"; demo.until = lastNow + 15.5; cursor.classList.remove("show"); };
+  home.forEach((p, i) => p.el.addEventListener("click", () => { userTakeOver(); select(i); }));
+  $("team-btn").addEventListener("click", () => { userTakeOver(); select(-1); });
+
+  function frame(ms) {
+    if (!running) return;
+    const now = ms / 1000, dt = Math.min(.05, now - (last || now)); last = now; lastNow = now;
+    if (t >= 5400) { ftHold += dt; if (ftHold > 3.5) reset(); }
+    else t += dt * SPEED;
+    step(dt, now); draw(now); hud(true); runDemo(now);
+    requestAnimationFrame(frame);
+  }
+  function setRunning() {
+    const should = visible && !document.hidden && !reduce;
+    if (should && !running) { running = true; last = 0; requestAnimationFrame(frame); }
+    else if (!should) running = false;
+  }
+
+  select(-1);
+  if (reduce) {
+    // état figé à la 63e minute, sans animation ni curseur
+    t = 63 * 60; hud(false); draw(0);
+    return;
+  }
+  hud(true); draw(0);
+  if ("IntersectionObserver" in window) new IntersectionObserver(es => { visible = es[0].isIntersecting; setRunning(); }).observe(board);
+  document.addEventListener("visibilitychange", setRunning);
+  setRunning();
+})();
+
+/* Méthode : une étape à la fois, flèches, barre de progression, clavier et swipe */
+(function () {
+  const root = document.getElementById("journey");
+  if (!root) return;
+  const slides = [...root.querySelectorAll(".j-slide")];
+  const steps = [...root.querySelectorAll("#j-progress li")];
+  const prev = document.getElementById("j-prev"), next = document.getElementById("j-next");
+  let cur = 0;
+  function go(i) {
+    if (i < 0 || i >= slides.length || i === cur) return;
+    slides.forEach((s, j) => {
+      s.classList.toggle("from-left", j < i);   // les étapes passées sortent vers la gauche, les suivantes attendent à droite
+      s.classList.toggle("is-active", j === i);
+      s.setAttribute("aria-hidden", j !== i);
+      s.querySelectorAll("a,button").forEach(el => el.tabIndex = j === i ? 0 : -1);
+    });
+    cur = i;
+    paint();
+  }
+  function paint() {
+    steps.forEach((li, j) => { li.classList.toggle("on", j === cur); li.classList.toggle("done", j < cur); });
+    prev.disabled = cur === 0;
+    next.disabled = cur === slides.length - 1;
+  }
+  prev.addEventListener("click", () => go(cur - 1));
+  next.addEventListener("click", () => go(cur + 1));
+  steps.forEach((li, j) => li.querySelector("button").addEventListener("click", () => go(j)));
+  root.addEventListener("keydown", e => {
+    if (e.key === "ArrowRight") { go(cur + 1); e.preventDefault(); }
+    if (e.key === "ArrowLeft") { go(cur - 1); e.preventDefault(); }
+  });
+  // swipe horizontal sur écran tactile
+  let x0 = null, y0 = null;
+  root.addEventListener("pointerdown", e => { if (e.pointerType !== "mouse") { x0 = e.clientX; y0 = e.clientY; } });
+  root.addEventListener("pointerup", e => {
+    if (x0 === null) return;
+    const dx = e.clientX - x0, dy = e.clientY - y0;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)) go(cur + (dx < 0 ? 1 : -1));
+    x0 = null;
+  });
+  slides.forEach((s, j) => { s.setAttribute("aria-hidden", j !== 0); s.querySelectorAll("a,button").forEach(el => el.tabIndex = j === 0 ? 0 : -1); });
+  paint();
+})();
+
+/* Rapport de match interactif (exemple) + curseur de démonstration qui le parcourt */
+(function () {
+  const $ = id => document.getElementById(id);
+  const app = $("rapp");
+  if (!app) return;
+  const body = $("rapp-body"), cur = $("rcursor");
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const status = r => r >= .75 ? ["ok", "Respectée"] : r >= .5 ? ["mid", "Partielle"] : ["bad", "Non respectée"];
+  const pct = r => Math.round(r * 100);
+
+  // --- Équipe : consignes et statistiques -------------------------------------------------
+  const TEAM_RULES = [
+    ["Presser dans les 5 s après la perte", 17, 29],
+    ["Relancer court depuis le gardien", 11, 29],
+    ["Bloc compact, 30 m max", .81],
+    ["Les ailiers attaquent la surface", 7, 14],
+    ["Renverser le jeu côté faible", 5, 22, "dès 30'"],
+    ["Les latéraux dédoublent à gauche", 9, 16, "dès 50'"],
+    ["Redescendre en bloc médian", .42, null, "dès 65'"],
+    ["Garder le ballon, ralentir le rythme", .79, null, "dès 80'"]
+  ];
+  const PERIODS = ["0–15", "15–30", "30–45", "45–60", "60–75", "75–90"];
+  const STATS = [
+    { k: "Possession", h: "54%", a: "46%", share: 54, unit: "%", series: [58, 61, 55, 49, 47, 52],
+      extra: [["Tiers défensif", 22], ["Tiers médian", 46], ["Tiers offensif", 32]],
+      note: "La possession a baissé après la pause, une fois la relance courte depuis le gardien abandonnée." },
+    { k: "Tirs", h: "13", a: "7", share: 65, unit: "", series: [3, 2, 2, 1, 2, 3],
+      note: "6 cadrés. Les deux buts viennent de centres après des dédoublements à gauche." },
+    { k: "Précision des passes", h: "82%", a: "74%", share: 53, unit: "%", series: [86, 85, 84, 79, 78, 80],
+      note: "La précision a perdu 7 points en seconde période, surtout sur les ballons longs." },
+    { k: "Récupérations dans le camp adverse", h: "11", a: "4", share: 73, unit: "", series: [3, 3, 2, 1, 0, 2],
+      note: "8 récupérations sur 11 avant la 65e minute, quand l'intensité du pressing a baissé." },
+    { k: "Duels gagnés", h: "48%", a: "52%", share: 48, unit: "%", series: [51, 50, 49, 44, 46, 47],
+      note: "Les duels aériens perdus face au point d'appui adverse expliquent l'essentiel de l'écart." }
+  ];
+
+  const ruleRow = (label, valueText, r, detail) => {
+    const [cls, st] = status(r);
+    return '<div class="gauge"><div class="g-top"><span>' + esc(label) + (detail ? ' <em>' + esc(detail) + '</em>' : '') + '</span><b>' + valueText +
+      '</b></div><div class="g-bar"><i class="' + cls + '" style="width:' + pct(r) + '%"></i></div><span class="st ' + cls + '">' + st + '</span></div>';
+  };
+
+  $("team-rules").innerHTML = TEAM_RULES.map(([l, a, b, d]) => b ? ruleRow(l, a + "/" + b, a / b, d) : ruleRow(l, pct(a) + "%", a, d)).join("");
+  $("team-stats").innerHTML = STATS.map((s, i) =>
+    '<div class="tstat"><button type="button" class="tstat-row" data-stat="' + i + '" aria-expanded="false"><span class="ts-k">' + esc(s.k) +
+    '</span><b>' + s.h + '</b><span class="ts-bar"><i style="width:' + s.share + '%"></i></span><b class="away">' + s.a + '</b><span class="chev" aria-hidden="true">+</span></button>' +
+    '<div class="tdetail" hidden><p class="label">Northfield FC par période</p><div class="chart">' +
+    s.series.map((v, j) => {
+      const max = Math.max.apply(null, s.series), min = Math.min.apply(null, s.series);
+      return '<div><span>' + v + s.unit + '</span><i style="height:' + Math.round(25 + (max > min ? (v - min) / (max - min) : 1) * 75) + '%"></i><em>' + PERIODS[j] + '</em></div>';
+    }).join("") +
+    '</div>' + (s.extra ? '<div class="thirds">' + s.extra.map(([l, v]) => '<div style="flex:' + v + '"><b>' + v + '%</b><span>' + l + '</span></div>').join("") + '</div>' : "") +
+    '<p class="tnote">' + esc(s.note) + '</p></div></div>').join("");
+  app.querySelectorAll(".tstat-row").forEach(btn => btn.addEventListener("click", () => {
+    const open = btn.getAttribute("aria-expanded") === "true";
+    btn.setAttribute("aria-expanded", !open);
+    btn.nextElementSibling.hidden = open;
+  }));
+  const collapseStats = () => app.querySelectorAll(".tstat-row").forEach(b => { b.setAttribute("aria-expanded", "false"); b.nextElementSibling.hidden = true; });
+
+  // --- Individuel : note du match et respect des consignes, séparés ---------------------
+  const ROLE_RULES = {
+    gk:  [["Relancer court depuis le gardien", 29], ["Couvrir derrière une ligne haute", 6]],
+    def: [["Presser dans les 5 s après la perte", 9], ["Tenir la ligne à 30 m", 14]],
+    mid: [["Presser dans les 5 s après la perte", 12], ["Renverser le jeu côté faible", 10]],
+    fw:  [["Presser le défenseur central", 12], ["Attaquer la surface", 9]]
+  };
+  const NOTES = {
+    "Relancer court depuis le gardien": ["Relance courte propre les 30 premières minutes", "Passé au jeu long après deux pertes"],
+    "Couvrir derrière une ligne haute": ["Bonnes sorties derrière la défense", "Sorti en retard sur une passe en profondeur"],
+    "Presser dans les 5 s après la perte": ["Réaction immédiate après les pertes la première heure", "Resté en place après les pertes en fin de match"],
+    "Tenir la ligne à 30 m": ["A tenu la distance avec le milieu en première période", "Trop bas sur les ballons longs"],
+    "Dédoubler à gauche": ["Dédoublements bien sentis et 4 centres délivrés", "Resté derrière sur deux transitions"],
+    "Renverser le jeu côté faible": ["A trouvé le côté opposé par des passes en diagonale", "A gardé le ballon côté fort sous la pression"],
+    "Presser le défenseur central": ["Courses incurvées qui coupent la ligne de passe", "Revenu en marchant au lieu de presser sur les sorties de but"],
+    "Attaquer la surface": ["Présent dans la surface sur les centres venus de la gauche", "Resté écarté quand le ballon était côté opposé"],
+    "Conserver le ballon pour les appels": ["A gagné des déviations et remis au milieu", "A perdu des duels dos au but"]
+  };
+  // [numéro, prénom, poste, rôle, note du match, taux par consigne, consigne en plus]
+  const PLAYERS = [
+    [1, "Nathan", "Gardien", "gk", 6.4, [.38, .83]],
+    [3, "Moussa", "Latéral gauche", "def", 7.3, [.67, .79, .75], ["Dédoubler à gauche", 8]],
+    [4, "Samir", "Défenseur central", "def", 7.5, [.78, .86]],
+    [5, "Harry", "Défenseur central", "def", 6.9, [.56, .71]],
+    [2, "Mateo", "Latéral droit", "def", 6.6, [.67, .64]],
+    [6, "Oliver", "Milieu central", "mid", 7.2, [.75, .4]],
+    [8, "Ethan", "Milieu défensif", "mid", 6.3, [.42, .3]],
+    [10, "Yassine", "Milieu central", "mid", 7.0, [.58, .5]],
+    [7, "Lucas", "Ailier gauche", "fw", 6.8, [.67, .44]],
+    [9, "Jack", "Attaquant", "fw", 6.1, [.42, .56, .63], ["Conserver le ballon pour les appels", 8]],
+    [11, "Diego", "Ailier droit", "fw", 5.9, [.33, .44]]
+  ];
+  const BASE = {
+    gk:  [["Passes", 21, 33], ["Arrêts", 3], ["Ballons longs", 18], ["Prises de balle", 4], ["Distance", "5.3 km"], ["Erreurs", 0]],
+    def: [["Passes", 41, 47], ["Duels gagnés", 7, 11], ["Interceptions", 4], ["Récupérations", 6], ["Distance", "10.1 km"], ["Dégagements", 5]],
+    mid: [["Passes", 52, 61], ["Duels gagnés", 6, 11], ["Pressings", 14], ["Récupérations", 7], ["Distance", "11.4 km"], ["Passes clés", 2]],
+    fw:  [["Passes", 19, 26], ["Duels gagnés", 5, 12], ["Pressings", 11], ["Tirs", 3], ["Distance", "10.6 km"], ["Entrées dans la surface", 5]]
+  };
+  const clip = (i, j) => { const m = (i * 17 + j * 29) % 88 + 1, s = (i * 23 + j * 41) % 60; return m + ":" + String(s).padStart(2, "0"); };
+  const playerRules = p => ROLE_RULES[p[3]].concat(p[6] ? [p[6]] : []).map(([l, tot], j) => { const ok = Math.round(tot * p[5][j]); return [l, ok, tot]; });
+  const instrScore = p => { const r = playerRules(p); return r.reduce((s, x) => s + x[1] / x[2], 0) / r.length; };
+  const tone = (v, hi, lo) => v >= hi ? "ok" : v >= lo ? "mid" : "bad";
+
+  $("ind-list").innerHTML = '<div class="plist-head"><span>Joueur</span><span>Note du match</span><span>Consignes</span></div>' + PLAYERS.map((p, i) => {
+    const sc = instrScore(p);
+    return '<button type="button" class="prow" data-p="' + i + '"><span class="pn">' + p[0] + '</span><span class="pnm"><b>' + p[1] + '</b><em>' + p[2] + '</em></span>' +
+      '<b class="pr ' + tone(p[4], 7, 6) + '">' + p[4].toFixed(1) + '</b><span class="pi"><i class="' + status(sc)[0] + '" style="width:' + pct(sc) + '%"></i><b>' + pct(sc) + '%</b></span></button>';
+  }).join("");
+
+  function openPlayer(i) {
+    const p = PLAYERS[i], sc = instrScore(p), rules = playerRules(p);
+    $("ind-detail").innerHTML =
+      '<button type="button" class="back" id="ind-back">← Tous les joueurs</button>' +
+      '<div class="dhead"><span class="pn big">' + p[0] + '</span><div><b>' + p[1] + '</b><em>' + p[2] + '</em></div></div>' +
+      '<div class="scores"><div><span class="label">Note du match</span><b class="' + tone(p[4], 7, 6) + '">' + p[4].toFixed(1) + '<small>/10</small></b><p>Performance globale : passes, duels, actions avec et sans ballon.</p></div>' +
+      '<div><span class="label">Respect des consignes</span><b class="' + status(sc)[0] + '">' + pct(sc) + '<small>%</small></b><p>À quel point il a suivi les consignes que vous lui avez données.</p></div></div>' +
+      '<p class="label sub">Stats du match</p><div class="dstats">' + BASE[p[3]].map(([k, a, b]) => '<div><span>' + k + '</span><b>' + (b ? a + "/" + b : a) + '</b></div>').join("") + '</div>' +
+      '<p class="label sub">Consignes individuelles</p>' + rules.map(([l, ok, tot], j) => {
+        const r = ok / tot, [cls, st] = status(r), n = NOTES[l];
+        return '<div class="pinstr">' + ruleRow(l, ok + "/" + tot, r).replace('<span class="st ' + cls + '">' + st + '</span>', "") +
+          '<div class="pnotes"><p class="good"><b>Réussi</b>' + esc(n[0]) + ' <span>' + clip(i, j) + ' · ' + clip(i, j + 3) + '</span></p>' +
+          '<p class="miss"><b>Manqué</b>' + esc(n[1]) + ' <span>' + clip(i, j + 5) + ' · ' + clip(i, j + 7) + '</span></p></div></div>';
+      }).join("");
+    $("ind-list").hidden = true; $("ind-detail").hidden = false; body.scrollTop = 0;
+    $("ind-back").addEventListener("click", closePlayer);
+  }
+  function closePlayer() { $("ind-detail").hidden = true; $("ind-list").hidden = false; body.scrollTop = 0; }
+  app.querySelectorAll(".prow").forEach(b => b.addEventListener("click", () => openPlayer(+b.dataset.p)));
+
+  // --- Onglets ---------------------------------------------------------------------------
+  const tabs = [...app.querySelectorAll(".rtabs [role=tab]")], panes = [...app.querySelectorAll(".rpane")];
+  function showTab(id) {
+    tabs.forEach(b => { const on = b.dataset.tab === id; b.setAttribute("aria-selected", on); b.tabIndex = on ? 0 : -1; });
+    panes.forEach(p => p.hidden = p.dataset.pane !== id);
+    if (id === "team") collapseStats();
+    if (id === "ind") closePlayer();
+    body.scrollTop = 0;
+  }
+  tabs.forEach((b, i) => {
+    b.addEventListener("click", () => showTab(b.dataset.tab));
+    b.addEventListener("keydown", e => {
+      const d = e.key === "ArrowRight" ? 1 : e.key === "ArrowLeft" ? -1 : 0;
+      if (d) { const n = tabs[(i + d + tabs.length) % tabs.length]; showTab(n.dataset.tab); n.focus(); }
+    });
+  });
+
+  // --- Curseur de démonstration ------------------------------------------------------------
+  if (reduce) return;
+  let token = 0, visible = false;
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+  async function gate(tk) {
+    while (!visible || document.hidden) { if (tk !== token) throw 0; await sleep(250); }
+    if (tk !== token) throw 0;
+  }
+  const at = (el, fx, fy) => { const a = app.getBoundingClientRect(), r = el.getBoundingClientRect(); return { x: r.left - a.left + Math.min(r.width * (fx || .5), 90), y: r.top - a.top + r.height * (fy || .55) }; };
+  let cx = 0, cy = 0;
+  const place = (x, y) => { cx = x; cy = y; cur.style.transform = "translate(" + x.toFixed(1) + "px," + y.toFixed(1) + "px)"; };
+  async function moveTo(el, tk) {
+    await gate(tk);
+    const p = at(el);
+    cur.classList.add("show"); place(p.x, p.y);
+    await sleep(900); await gate(tk);
+  }
+  async function click(el, tk) {
+    await moveTo(el, tk);
+    cur.classList.remove("click"); void cur.offsetWidth; cur.classList.add("click");
+    el.click();
+    await sleep(450); await gate(tk);
+  }
+  async function scroll(to, ms, tk) {
+    await gate(tk);
+    const r = body.getBoundingClientRect(), a = app.getBoundingClientRect();
+    cur.classList.add("show"); place(r.left - a.left + r.width * .62, r.top - a.top + r.height * .55);
+    await sleep(500);
+    const from = body.scrollTop, end = to === "bottom" ? body.scrollHeight - body.clientHeight : to, t0 = performance.now();
+    place(cx, cy + (end > from ? -40 : 40));   // geste de défilement, comme une molette ou un swipe
+    await new Promise((res, rej) => {
+      (function f(now) {
+        if (tk !== token) return rej(0);
+        const k = Math.min(1, (now - t0) / ms), e = k < .5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+        body.scrollTop = from + (end - from) * e;
+        k < 1 ? requestAnimationFrame(f) : res();
+      })(t0);
+    });
+    await gate(tk);
+  }
+  const wait = async (ms, tk) => { await gate(tk); await sleep(ms); await gate(tk); };
+  const tab = id => app.querySelector('.rtabs [data-tab="' + id + '"]');
+  const ORDER = [9, 1, 7, 10, 2, 6];
+
+  async function run() {
+    const tk = ++token;
+    let k = 0;
+    try {
+      for (;;) {
+        await click(tab("plan"), tk); await wait(1400, tk);
+        await scroll("bottom", 3200, tk); await wait(1200, tk); await scroll(0, 1600, tk);
+        await click(tab("team"), tk); await wait(1000, tk);
+        const statsTop = $("team-stats").getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop - 50;
+        await scroll(statsTop, 1800, tk);
+        await click(app.querySelector('.tstat-row[data-stat="0"]'), tk); await wait(2600, tk);
+        await scroll("bottom", 1400, tk); await wait(900, tk); await scroll(0, 1400, tk);
+        await click(tab("ind"), tk); await wait(1100, tk);
+        await click(app.querySelector('.prow[data-p="' + ORDER[k % ORDER.length] + '"]'), tk); await wait(2200, tk);
+        await scroll("bottom", 2600, tk); await wait(1400, tk); await scroll(0, 1400, tk);
+        await click($("ind-back"), tk); await wait(900, tk);
+        k++;
+      }
+    } catch (e) { /* démo arrêtée */ }
+  }
+  // le rapport se regarde comme une vidéo : le visiteur ne peut pas le piloter
+  app.querySelectorAll("button").forEach(b => b.tabIndex = -1);
+  if ("IntersectionObserver" in window) new IntersectionObserver(es => { visible = es[0].isIntersecting; }, { threshold: .35 }).observe(app);
+  else visible = true;
+  const a0 = app.getBoundingClientRect(); place(a0.width * .5, a0.height * .9);
+  run();
+})();
+
+/* Apparition des sections au défilement */
+(function () {
+  if (!("IntersectionObserver" in window)) return;
+  document.documentElement.classList.add("js");
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } });
+  }, { threshold: .12, rootMargin: "0px 0px -40px 0px" });
+  document.querySelectorAll(".reveal").forEach(el => io.observe(el));
+})();
+
+/* Demandes d'accès enregistrées dans la table Supabase "waitlist".
+   La clé publishable est publique par conception : la sécurité repose sur les règles RLS
+   (insertion seule, aucune lecture possible depuis le site). */
+const SUPABASE_URL = "https://pazzrgvkgmdgqmtscspl.supabase.co";
+const SUPABASE_KEY = "sb_publishable_dkQEIR4jjdhUVmG1pU7eIw_qhpf2NoG";
+
+(function () {
+  const form = document.getElementById("access-form");
+  const email = document.getElementById("email");
+  const club = document.getElementById("club");
+  const role = document.getElementById("role");
+  const consent = document.getElementById("consent");
+  const msg = document.getElementById("form-msg");
+  const btn = form.querySelector("button");
+  const say = (text, cls) => { msg.textContent = text; msg.className = "form-msg " + (cls || ""); };
+
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const value = email.value.trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(value)) { say("Saisissez une adresse e-mail valide, par exemple nom@club.fr.", "err"); email.focus(); return; }
+    if (!consent.checked) { say("Cochez la case pour accepter de recevoir nos nouvelles.", "err"); consent.focus(); return; }
+
+    btn.disabled = true;
+    try {
+      const res = await fetch(SUPABASE_URL + "/rest/v1/waitlist", {
+        method: "POST",
+        headers: { "apikey": SUPABASE_KEY, "Content-Type": "application/json", "Prefer": "return=minimal" },
+        body: JSON.stringify({ email: value, club: club.value.trim() || null, role: role.value || null, source: "access", consent: true })
+      });
+      // 409 = adresse déjà enregistrée : on rassure plutôt que d'afficher une erreur.
+      if (res.status === 409) { say("Cette adresse est déjà enregistrée. Nous vous recontacterons avant le lancement.", "ok"); form.reset(); return; }
+      if (!res.ok) throw new Error(res.status);
+      say("Demande reçue. Nous vous recontacterons avant le lancement.", "ok");
+      form.reset();
+    } catch {
+      say("Votre demande n'a pas pu être envoyée. Vérifiez votre connexion et réessayez.", "err");
+    } finally { btn.disabled = false; }
+  });
+})();
+</script>
+
+<script>
+/* Méthode, étape 2 : terrain en perspective (lignes calculées par homographie), un curseur choisit un repère
+   sur le schéma puis clique sur l'image ; après 4 repères, le terrain se dessine en rose sur les vraies lignes. */
+(function () {
+  const root = document.getElementById("ps");
+  if (!root) return;
+  const view = document.getElementById("ps-view"), map = document.getElementById("ps-map");
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (tag, attrs, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent.appendChild(e); return e; };
+
+  // homographie terrain (m, 105 × 68) -> image (viewBox 360 × 210) : vue de la moitié gauche depuis la tribune
+  function solve(A, b) { const n = b.length; for (let i = 0; i < n; i++) { let p = i; for (let r = i + 1; r < n; r++) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r; [A[i], A[p]] = [A[p], A[i]]; [b[i], b[p]] = [b[p], b[i]]; for (let r = i + 1; r < n; r++) { const f = A[r][i] / A[i][i]; for (let c = i; c < n; c++) A[r][c] -= f * A[i][c]; b[r] -= f * b[i]; } } const x = []; for (let i = n - 1; i >= 0; i--) { let v = b[i]; for (let c = i + 1; c < n; c++) v -= A[i][c] * x[c]; x[i] = v / A[i][i]; } return x; }
+  function homog(src, dst) { const A = [], b = []; src.forEach(([x, y], i) => { const [u, v] = dst[i]; A.push([x, y, 1, 0, 0, 0, -u * x, -u * y]); b.push(u); A.push([0, 0, 0, x, y, 1, -v * x, -v * y]); b.push(v); }); const h = solve(A, b); return ([x, y]) => { const z = h[6] * x + h[7] * y + 1; return [(h[0] * x + h[1] * y + h[2]) / z, (h[3] * x + h[4] * y + h[5]) / z]; }; }
+  // vue « caméra Veo » : posée en hauteur au bord du terrain, vers la ligne médiane, regard de trois quarts vers le but de gauche
+  const P = homog([[0, 0], [52.5, 0], [52.5, 68], [0, 68]], [[92, 90], [318, 90], [468, 214], [-58, 214]]);
+  const path = (pts) => "M" + pts.map((q) => P(q).map((v) => v.toFixed(1)).join(" ")).join(" L");
+  const arc = (cx, cy, r, a0, a1) => { const pts = []; for (let k = 0; k <= 40; k++) { const t = a0 + (a1 - a0) * k / 40; pts.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); } return pts; };
+
+  // ciel, arbres au loin, tribune simple, projecteurs
+  const defs = el("defs", {}, view);
+  const g = el("linearGradient", { id: "ps-sky", x1: 0, y1: 0, x2: 0, y2: 1 }, defs);
+  el("stop", { offset: 0, "stop-color": "#0d1622" }, g); el("stop", { offset: 1, "stop-color": "#2a3b4c" }, g);
+  el("rect", { width: 360, height: 210, fill: "url(#ps-sky)" }, view);
+  el("path", { d: "M0 68 Q20 61 40 66 Q60 58 82 65 Q104 60 126 66 L250 66 Q272 59 294 65 Q316 58 338 64 Q350 61 360 66 L360 86 L0 86Z", fill: "#16211c" }, view);
+  // tribune : toit, gradins, poteaux (centrée derrière la ligne médiane, on en voit environ les trois quarts)
+  el("path", { d: "M240 49 L408 49 L414 55 L234 55Z", fill: "#3b4148" }, view);
+  el("path", { d: "M240 55 L408 55 L408 77 L240 77Z", fill: "#59616a" }, view);
+  for (let k = 1; k < 4; k++) { const y = 55 + k * 5.5; el("line", { x1: 240, y1: y, x2: 408, y2: y, stroke: "#6f7780", "stroke-width": .8 }, view); }
+  for (const x of [248, 296, 352, 400]) el("line", { x1: x, y1: 52, x2: x, y2: 77, stroke: "#30353b", "stroke-width": 1.2 }, view);
+  // projecteurs
+  for (const [x, y0] of [[174, 84]]) { el("line", { x1: x, y1: y0, x2: x, y2: 22, stroke: "#9aa3ab", "stroke-width": 1.2 }, view); el("rect", { x: x - 6, y: 17, width: 12, height: 6, rx: 1, fill: "#e9eef2" }, view); el("circle", { cx: x, cy: 20, r: 9, fill: "rgba(255,250,220,.12)" }, view); }
+  // sol sombre autour de l'enceinte, puis pelouse (terrain + 4 m de dégagement) tondue en bandes
+  el("rect", { x: 0, y: 78, width: 360, height: 132, fill: "#171b19" }, view);
+  const RX0 = -4, RY0 = -4, RX1 = 109, RY1 = 72;
+  el("path", { d: path([[RX0, RY0], [RX1, RY0], [RX1, RY1], [RX0, RY1]]) + "Z", fill: "#1f6436" }, view);
+  for (let k = 0; k < 20; k++) if (k % 2 === 0) el("path", { d: path([[Math.max(RX0, k * 5.5), RY0], [(k + 1) * 5.5, RY0], [(k + 1) * 5.5, RY1], [Math.max(RX0, k * 5.5), RY1]]) + "Z", fill: "#277a42" }, view);
+  // barrières autour de l'enceinte : lisse haute + poteaux, sur le côté du fond et derrière le but
+  const fence = el("g", { stroke: "#b9c1c8", fill: "none" }, view);
+  const rail = (a, b) => {
+    const n = Math.round(Math.hypot(b[0] - a[0], b[1] - a[1]) / 3);
+    const top = [];
+    for (let i = 0; i <= n; i++) {
+      const q = [a[0] + (b[0] - a[0]) * i / n, a[1] + (b[1] - a[1]) * i / n], [x, y] = P(q);
+      const hgt = 4.2 * (y - 40) / 60;   // plus haut quand la barrière est plus proche de la caméra
+      el("line", { x1: x, y1: y, x2: x, y2: y - hgt, "stroke-width": .7 }, fence);
+      top.push([x, y - hgt]);
+    }
+    el("path", { d: "M" + top.map((t) => t.map((v) => v.toFixed(1)).join(" ")).join(" L"), "stroke-width": 1 }, fence);
+  };
+  rail([RX0, RY0], [RX1, RY0]);
+  rail([RX0, RY1 + 8], [RX0, RY0]);
+
+  // lignes du terrain (moitié gauche)
+  const cy = 34, segs = [
+    [[0, 0], [62, 0]], [[0, 0], [0, 68]], [[0, 68], [62, 68]], [[52.5, 0], [52.5, 68]],
+    [[0, cy - 20.16], [16.5, cy - 20.16], [16.5, cy + 20.16], [0, cy + 20.16]],
+    [[0, cy - 9.16], [5.5, cy - 9.16], [5.5, cy + 9.16], [0, cy + 9.16]],
+    arc(11, cy, 9.15, -0.925, 0.925), arc(52.5, cy, 9.15, 0, Math.PI * 2),
+  ];
+  const lines = el("g", {}, view), pink = el("g", {}, view);
+  for (const sg of segs) { el("path", { d: path(sg), class: "line" }, lines); el("path", { d: path(sg), class: "pink" }, pink); }
+  for (const [x, r] of [[11, .3], [52.5, .35]]) el("path", { d: path(arc(x, cy, r, 0, Math.PI * 2)) + "Z", fill: "#fff" }, lines);
+  // but de gauche
+  const gl = P([0, cy - 3.66]), gr = P([0, cy + 3.66]);
+  el("path", { d: `M${gl[0]} ${gl[1]} L${gl[0]} ${gl[1] - 11} L${gr[0]} ${gr[1] - 13} L${gr[0]} ${gr[1]}`, fill: "none", stroke: "#f2f2f2", "stroke-width": 1.5 }, view);
+
+  // repères à placer : position sur le terrain, nom affiché
+  const T = [
+    { p: [16.5, cy - 20.16], name: "Surface gauche : coin, côté opposé", short: "Coin de surface" },
+    { p: [16.5, cy + 20.16], name: "Surface gauche : coin, côté caméra", short: "Coin de surface" },
+    { p: [11, cy], name: "Point de penalty gauche", short: "Point de penalty" },
+    { p: [52.5, 0], name: "Ligne médiane : touche opposée", short: "Ligne médiane" },
+  ];
+  T.forEach((t) => { const [x, y] = P(t.p); t.dot = el("circle", { cx: x, cy: y, r: 4.2, class: "dot" }, view); t.lbl = el("text", { x: x > 260 ? x - 6 : x + 6, y: y - 6, class: "lbl", "text-anchor": x > 260 ? "end" : "start" }, view); t.lbl.textContent = t.short; });
+
+  // schéma vu de dessus (tous les repères, ceux à placer sont repérés)
+  map.innerHTML = `<rect class="ln" x="0" y="0" width="105" height="68"/><line class="ln" x1="52.5" y1="0" x2="52.5" y2="68"/><circle class="ln" cx="52.5" cy="34" r="9.15"/>
+    <rect class="ln" x="0" y="13.84" width="16.5" height="40.32"/><rect class="ln" x="88.5" y="13.84" width="16.5" height="40.32"/>
+    <rect class="ln" x="0" y="24.84" width="5.5" height="18.32"/><rect class="ln" x="99.5" y="24.84" width="5.5" height="18.32"/>`;
+  const others = [[0, 0], [0, 68], [5.5, 24.84], [5.5, 43.16], [52.5, 68], [52.5, 34], [105, 0], [105, 68], [88.5, 13.84], [88.5, 54.16], [94, 34]];
+  for (const [x, y] of others) el("circle", { cx: x, cy: y, r: 1.7, class: "pt" }, map);
+  T.forEach((t) => { t.pt = el("circle", { cx: t.p[0], cy: t.p[1], r: 2.2, class: "pt" }, map); });
+
+  const cur = document.getElementById("ps-cursor"), checks = document.getElementById("ps-checks");
+  const nameEl = document.getElementById("ps-name"), count = document.getElementById("ps-count");
+  const slide = root.closest(".j-slide");
+  function reset() {
+    T.forEach((t) => { t.dot.classList.remove("on"); t.lbl.classList.remove("on"); t.pt.classList.remove("sel", "ok"); });
+    view.classList.remove("matched"); checks.classList.remove("on"); nameEl.textContent = T[0].name; count.textContent = "0 / 4 placés";
+  }
+  function finalState() {
+    T.forEach((t) => { t.dot.classList.add("on"); t.lbl.classList.add("on"); t.pt.classList.add("ok"); });
+    view.classList.add("matched"); checks.classList.add("on"); count.textContent = "4 / 4 placés";
+  }
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) { finalState(); return; }
+
+  let visible = false, token = 0;
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const active = () => visible && !document.hidden && slide.classList.contains("is-active");
+  async function gate(tk) { while (!active()) { if (tk !== token) throw 0; await sleep(250); } if (tk !== token) throw 0; }
+  const spot = (node) => { const a = root.getBoundingClientRect(), r = node.getBoundingClientRect(); return [r.left - a.left + r.width / 2, r.top - a.top + r.height / 2]; };
+  async function clickOn(node, tk) {
+    await gate(tk);
+    const [x, y] = spot(node);
+    cur.classList.add("show"); cur.style.transform = `translate(${x.toFixed(1)}px,${y.toFixed(1)}px)`;
+    await sleep(950); await gate(tk);
+    cur.classList.remove("click"); void cur.offsetWidth; cur.classList.add("click");
+    await sleep(380);
+  }
+  async function run() {
+    const tk = ++token;
+    try {
+      for (;;) {
+        reset(); await sleep(700);
+        for (const [i, t] of T.entries()) {
+          await clickOn(t.pt, tk);
+          t.pt.classList.add("sel"); nameEl.textContent = t.name;
+          await sleep(350);
+          await clickOn(t.dot, tk);
+          t.dot.classList.add("on"); t.lbl.classList.add("on"); t.pt.classList.remove("sel"); t.pt.classList.add("ok");
+          count.textContent = `${i + 1} / 4 placés`;
+          await sleep(300);
+        }
+        cur.classList.remove("show");
+        await sleep(400); await gate(tk);
+        view.classList.add("matched"); await sleep(900); checks.classList.add("on");
+        await sleep(3200); await gate(tk);
+      }
+    } catch (e) { /* relancé plus tard */ }
+  }
+  if ("IntersectionObserver" in window) new IntersectionObserver((es) => { visible = es[0].isIntersecting; }).observe(root);
+  else visible = true;
+  run();
+})();
+</script>
+</body>
+</html>
