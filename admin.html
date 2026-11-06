@@ -39,12 +39,13 @@
   </form>
 </main>
 
-<!-- Espace admin : trois onglets -->
+<!-- Espace admin : quatre onglets -->
 <main class="adm-wrap adm-page" id="dash" hidden>
   <div class="adm-tabs" role="tablist" aria-label="Rubriques">
     <button role="tab" id="tab-depenses" aria-controls="p-depenses" data-tab="depenses">Dépenses</button>
     <button role="tab" id="tab-recettes" aria-controls="p-recettes" data-tab="recettes">Recettes</button>
     <button role="tab" id="tab-taches" aria-controls="p-taches" data-tab="taches">Tâches <span class="tab-count" id="todo-count"></span></button>
+    <button role="tab" id="tab-reussi" aria-controls="p-reussi" data-tab="reussi">Réalisations</button>
   </div>
 
   <!-- Onglet Dépenses -->
@@ -97,6 +98,14 @@
       <button class="btn btn-ink" id="add-task" type="button">+ Ajouter une tâche</button>
     </div>
     <div id="task-blocks"></div>
+  </section>
+
+  <!-- Onglet Réalisations -->
+  <section class="adm-panel" role="tabpanel" id="p-reussi" aria-labelledby="tab-reussi" hidden>
+    <div class="adm-sec-head">
+      <div><h1>Réalisations</h1><p class="muted">Ce qui marche à coup sûr et n'a plus besoin d'être amélioré.</p></div>
+    </div>
+    <ol class="ach-list" id="ach-list"></ol>
   </section>
 </main>
 
@@ -198,6 +207,13 @@ body{background:var(--bg)}
 .adm-h2{font-size:1.2rem;letter-spacing:-.02em;margin:40px 0 12px}
 .adm-note{margin-top:28px}
 .task-blk li{cursor:pointer}
+.ach-list{list-style:none;padding:0;margin:0;display:grid;gap:12px;counter-reset:ach}
+.ach-list li{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px 16px 56px;position:relative;counter-increment:ach}
+.ach-list li::before{content:counter(ach);position:absolute;left:18px;top:16px;width:26px;height:26px;border-radius:99px;background:#e6f4ea;color:#1d6b37;font-family:var(--f-mono);font-size:.8rem;display:grid;place-items:center}
+.ach-list b{display:block;font-size:1.02rem;letter-spacing:-.01em}
+.ach-list p{margin:4px 0 0;font-size:.92rem}
+.ach-list .ach-proof{margin-top:8px;font-size:.82rem;color:var(--muted)}
+.ach-list time{font-family:var(--f-mono);font-size:.7rem;color:var(--muted);float:right;margin-left:12px}
 .who{font-family:var(--f-mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap;align-self:flex-start}
 .who.moi{background:#fff4dc;border-color:#f1d79a;color:#7a5600}
 .who.claude{background:#eef3ff;border-color:#cfdcff;color:#2a4fb8}
@@ -300,7 +316,7 @@ body{background:var(--bg)}
   ];
   const ORDER = ["paid", "now", "launch_month", "launch_once", "match", "extra"];
 
-  let rows = [], revenues = [], changes = [], tasks = [], editing = null, editingRev = null, editingTask = null;
+  let rows = [], revenues = [], changes = [], tasks = [], achievements = [], editing = null, editingRev = null, editingTask = null;
   const TASK_GROUPS = [
     { key: "waiting", title: "En attente", sub: "Bloqué tant que ce n'est pas fait." },
     { key: "doing", title: "En cours", sub: "Ce qui avance en ce moment." },
@@ -337,15 +353,16 @@ body{background:var(--bg)}
   }
 
   async function load() {
-    const [e, r, c, k] = await Promise.all([
+    const [e, r, c, k, a] = await Promise.all([
       sb.from("expenses").select("*").order("sort").order("created_at"),
       sb.from("revenues").select("*").order("received_on", { ascending: false }),
       sb.from("expense_changes").select("*").order("created_at", { ascending: false }).limit(100),
       sb.from("tasks").select("*").order("sort").order("created_at"),
+      sb.from("achievements").select("*").order("sort").order("created_at"),
     ]);
-    const err = e.error || r.error || c.error || k.error;
+    const err = e.error || r.error || c.error || k.error || a.error;
     if (err) { $("exp-blocks").innerHTML = '<p class="form-msg err">Erreur de chargement : ' + esc(err.message) + "</p>"; return; }
-    rows = e.data; revenues = r.data; changes = c.data; tasks = k.data; render();
+    rows = e.data; revenues = r.data; changes = c.data; tasks = k.data; achievements = a.data; render();
   }
 
   // Sommes min/max des dépenses à venir (optionnelles et montants inconnus exclus)
@@ -399,6 +416,9 @@ body{background:var(--bg)}
       return `<div class="blk task-blk ${g.key}"><div class="blk-head"><h3>${g.title}<small>${g.sub}</small></h3><span class="blk-total">${list.length}</span></div>
         <ul>${list.map((x) => `<li data-task="${x.id}"><span class="nm"><b>${esc(x.title)}</b>${x.detail ? `<small>${esc(x.detail)}</small>` : ""}</span><span class="who ${x.owner}">${WHO[x.owner]}</span></li>`).join("")}</ul></div>`;
     }).join("") || '<p class="blk-empty">Aucune tâche.</p>';
+
+    // Réalisations
+    $("ach-list").innerHTML = achievements.map((x) => `<li><time datetime="${x.achieved_on}">${new Date(x.achieved_on).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</time><b>${esc(x.title)}</b>${x.detail ? `<p>${esc(x.detail)}</p>` : ""}${x.proof ? `<p class="ach-proof">${esc(x.proof)}</p>` : ""}</li>`).join("") || '<li>Rien pour l’instant.</li>';
 
     $("k-result").innerHTML = `<span class="${res > 0 ? "pos" : res < 0 ? "neg" : ""}">${res > 0 ? "+" : ""}${eur0.format(res)}</span>`;
 
@@ -511,8 +531,8 @@ body{background:var(--bg)}
     $("tdlg").close(); await load();
   }
 
-  // ----- Onglets (mémorisés dans l'adresse : #depenses, #recettes, #taches) -----
-  const TABS = ["depenses", "recettes", "taches"];
+  // ----- Onglets (mémorisés dans l'adresse : #depenses, #recettes, #taches, #reussi) -----
+  const TABS = ["depenses", "recettes", "taches", "reussi"];
   function showTab(name) {
     if (!TABS.includes(name)) name = "depenses";
     for (const t of TABS) {
