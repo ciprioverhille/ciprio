@@ -46,6 +46,7 @@
     <button role="tab" id="tab-recettes" aria-controls="p-recettes" data-tab="recettes">Recettes</button>
     <button role="tab" id="tab-taches" aria-controls="p-taches" data-tab="taches">Tâches <span class="tab-count" id="todo-count"></span></button>
     <button role="tab" id="tab-reussi" aria-controls="p-reussi" data-tab="reussi">Réalisations</button>
+    <button role="tab" id="tab-prospection" aria-controls="p-prospection" data-tab="prospection">Prospection <span class="tab-count" id="reply-count"></span></button>
   </div>
 
   <!-- Onglet Dépenses -->
@@ -107,7 +108,63 @@
     </div>
     <ol class="ach-list" id="ach-list"></ol>
   </section>
+
+  <!-- Onglet Prospection -->
+  <section class="adm-panel" role="tabpanel" id="p-prospection" aria-labelledby="tab-prospection" hidden>
+    <div class="adm-sec-head">
+      <div><h1>Prospection</h1><p class="muted">Les e-mails envoyés aux clubs depuis contact@ciprio.ai, leurs réponses, et les inscriptions sur le site. Clique sur un club pour lire son message.</p></div>
+    </div>
+    <div class="adm-kpis">
+      <div class="adm-card"><span class="k">E-mails envoyés</span><b id="k-sent">–</b><small id="k-sent-d"></small></div>
+      <div class="adm-card"><span class="k">Réponses reçues</span><b id="k-replied">–</b><small id="k-replied-d"></small></div>
+      <div class="adm-card adm-dark"><span class="k">Inscrits sur le site</span><b id="k-signed">–</b><small id="k-signed-d"></small></div>
+    </div>
+
+    <h2 class="adm-h2">Réponses des clubs</h2>
+    <div id="pr-replies"></div>
+
+    <h2 class="adm-h2">E-mails aux clubs</h2>
+    <div class="pr-filters" id="pr-filters" role="group" aria-label="Filtrer">
+      <button type="button" data-f="all" aria-pressed="true">Tous</button>
+      <button type="button" data-f="to_send" aria-pressed="false">À envoyer</button>
+      <button type="button" data-f="sent" aria-pressed="false">Envoyés</button>
+      <button type="button" data-f="replied" aria-pressed="false">Ont répondu</button>
+      <button type="button" data-f="stop" aria-pressed="false">STOP / erreur</button>
+    </div>
+    <div id="pr-list"></div>
+
+    <h2 class="adm-h2">Inscriptions sur le site</h2>
+    <p class="muted adm-small">Les coachs qui ont laissé leur e-mail sur ciprio.ai. Ils reçoivent un seul e-mail de confirmation, puis un e-mail au lancement. Rien d'autre.</p>
+    <div class="adm-scroll" style="margin-top:12px"><table class="adm-table"><thead><tr><th>Date</th><th>E-mail</th><th>Club</th><th>Rôle</th></tr></thead><tbody id="wl"></tbody></table></div>
+
+    <h2 class="adm-h2">Messages reçus par le formulaire Contact</h2>
+    <div id="cm"></div>
+  </section>
 </main>
+
+<!-- Fenêtre : e-mail de prospection -->
+<dialog id="odlg" class="adm-dlg pr-dlg">
+  <form method="dialog" novalidate>
+    <h2 id="odlg-title">Club</h2>
+    <p class="muted adm-small" id="o-meta"></p>
+    <div class="pr-mail"><p><b>À :</b> <span id="o-to"></span></p><p><b>Objet :</b> <span id="o-subject"></span></p><pre id="o-body"></pre></div>
+    <div class="row2">
+      <div class="field"><label for="o-status">État</label><select id="o-status"><option value="to_send">À envoyer</option><option value="sent">Envoyé</option><option value="replied">A répondu</option><option value="stop">STOP (ne plus écrire)</option><option value="bounced">Adresse en erreur</option></select></div>
+      <div class="field"><label for="o-sent">Envoyé le</label><input id="o-sent" type="datetime-local"></div>
+    </div>
+    <div class="field"><label for="o-reply">Réponse du club</label><textarea id="o-reply" maxlength="8000" placeholder="Colle ici la réponse reçue"></textarea></div>
+    <div class="row2">
+      <div class="field"><label for="o-replied">Reçue le</label><input id="o-replied" type="datetime-local"></div>
+      <div class="field pr-check"><label><input id="o-signed" type="checkbox"> Inscrit sur le site</label></div>
+    </div>
+    <div class="field"><label for="o-note">Note</label><input id="o-note" maxlength="300"></div>
+    <div class="adm-dlg-btns">
+      <span></span>
+      <span><button class="btn btn-line" value="cancel" formnovalidate>Fermer</button><button class="btn btn-ink" id="o-save" type="button">Enregistrer</button></span>
+    </div>
+    <p class="form-msg" id="o-msg" role="status" aria-live="polite"></p>
+  </form>
+</dialog>
 
 <!-- Fenêtre : tâche -->
 <dialog id="tdlg" class="adm-dlg">
@@ -272,6 +329,23 @@ body{background:var(--bg)}
 .adm-dlg-btns{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:6px}
 .adm-dlg-btns span{display:flex;gap:8px}
 .adm-del{color:var(--bad)}
+.pr-filters{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+.pr-filters button{font:inherit;font-size:.84rem;padding:6px 12px;border-radius:99px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.pr-filters button[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.st{font-family:var(--f-mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap;align-self:flex-start}
+.st.to_send{color:var(--muted)}
+.st.sent{background:#eef3ff;border-color:#cfdcff;color:#2a4fb8}
+.st.replied{background:#e6f4ea;border-color:#b9e0c4;color:#1d6b37}
+.st.stop,.st.bounced{background:#fdecec;border-color:#f3c4c4;color:#a12b2b}
+.pr-row-r{display:flex;gap:8px;align-items:center;flex-shrink:0}
+.pr-quote{white-space:pre-wrap;font-size:.86rem;color:var(--ink-2);margin-top:4px;line-height:1.45}
+.pr-mail{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:14px 16px;font-size:.86rem;max-height:40vh;overflow:auto}
+.pr-mail p{margin:0 0 4px}
+.pr-mail pre{white-space:pre-wrap;font:inherit;margin:10px 0 0;line-height:1.5}
+.pr-check{align-self:end}
+.pr-check label{display:flex;gap:8px;align-items:center;font-size:.92rem;font-family:inherit;text-transform:none;letter-spacing:normal;color:var(--ink);padding-bottom:10px}
+.pr-check input{width:18px;height:18px;margin:0;padding:0;flex:none}
+.pr-dlg{width:min(760px,calc(100vw - 32px))}
 @media (max-width:640px){
   .adm-user .muted{display:none}
   .adm-kpis{grid-template-columns:1fr}
@@ -353,16 +427,84 @@ body{background:var(--bg)}
   }
 
   async function load() {
-    const [e, r, c, k, a] = await Promise.all([
+    const [e, r, c, k, a, o, w, m] = await Promise.all([
       sb.from("expenses").select("*").order("sort").order("created_at"),
       sb.from("revenues").select("*").order("received_on", { ascending: false }),
       sb.from("expense_changes").select("*").order("created_at", { ascending: false }).limit(100),
       sb.from("tasks").select("*").order("sort").order("created_at"),
       sb.from("achievements").select("*").order("sort").order("created_at"),
+      sb.from("outreach").select("*").order("id"),
+      sb.from("waitlist").select("*").order("created_at", { ascending: false }),
+      sb.from("contact_messages").select("*").order("created_at", { ascending: false }),
     ]);
     const err = e.error || r.error || c.error || k.error || a.error;
     if (err) { $("exp-blocks").innerHTML = '<p class="form-msg err">Erreur de chargement : ' + esc(err.message) + "</p>"; return; }
-    rows = e.data; revenues = r.data; changes = c.data; tasks = k.data; achievements = a.data; render();
+    rows = e.data; revenues = r.data; changes = c.data; tasks = k.data; achievements = a.data;
+    outreach = o.data || []; waitlist = w.data || []; contacts = m.data || [];
+    render(); renderPros();
+  }
+
+  // ----- Prospection -----
+  let outreach = [], waitlist = [], contacts = [], prFilter = "all", editingOut = null;
+  const OSTATUS = { to_send: "À envoyer", sent: "Envoyé", replied: "A répondu", stop: "STOP", bounced: "Erreur" };
+  const shortFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  const short = (d) => (d ? shortFmt.format(new Date(d)) : "");
+  const toLocal = (d) => { if (!d) return ""; const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 16); };
+  const fromLocal = (v) => (v ? new Date(v).toISOString() : null);
+
+  function renderPros() {
+    const sent = outreach.filter((x) => x.status !== "to_send" && x.status !== "bounced").length;
+    const replied = outreach.filter((x) => x.status === "replied" || x.status === "stop");
+    const signedClubs = outreach.filter((x) => x.signed_up).length;
+    $("k-sent").textContent = sent + " / " + outreach.length;
+    $("k-sent-d").textContent = outreach.filter((x) => x.status === "to_send").length + " encore à envoyer";
+    $("k-replied").textContent = replied.length;
+    $("k-replied-d").textContent = sent ? Math.round((100 * replied.length) / sent) + " % des e-mails envoyés" : "aucun envoi pour l'instant";
+    $("k-signed").textContent = waitlist.length;
+    $("k-signed-d").textContent = signedClubs ? signedClubs + " club(s) contacté(s) inscrit(s)" : "inscriptions sur ciprio.ai";
+    const unread = outreach.filter((x) => x.status === "replied").length;
+    $("reply-count").textContent = unread || "";
+
+    $("pr-replies").innerHTML = replied.length ? `<div class="blk"><ul>${replied
+      .sort((a, b) => new Date(b.replied_at || 0) - new Date(a.replied_at || 0))
+      .map((x) => `<li data-out="${x.id}"><span class="nm"><b>${esc(x.club)}</b><small>${esc(x.email)}${x.replied_at ? " — " + short(x.replied_at) : ""}</small>${x.reply ? `<div class="pr-quote">${esc(x.reply.length > 400 ? x.reply.slice(0, 400) + "…" : x.reply)}</div>` : ""}</span><span class="pr-row-r"><span class="st ${x.status}">${OSTATUS[x.status]}</span></span></li>`).join("")}</ul></div>`
+      : '<p class="blk-empty">Aucune réponse pour l’instant.</p>';
+
+    const list = outreach.filter((x) => prFilter === "all" || x.status === prFilter || (prFilter === "stop" && x.status === "bounced"));
+    const days = [...new Set(list.map((x) => x.send_day))].sort();
+    $("pr-list").innerHTML = list.length ? days.map((d) => {
+      const l = list.filter((x) => x.send_day === d);
+      const done = l.filter((x) => x.status !== "to_send").length;
+      return `<div class="blk"><div class="blk-head"><h3>Envoi n° ${d}<small>${l.length} clubs</small></h3><span class="blk-total">${done} / ${l.length} envoyés</span></div>
+        <ul>${l.map((x) => `<li data-out="${x.id}"><span class="nm"><b>${esc(x.club)}</b><small>${esc(x.division)}${x.division === "N2" ? " " + esc((x.ligue || "").replace("N2 ", "")) : " — " + esc(x.ligue || "")} · ${esc(x.email)}${x.sent_at ? " · envoyé le " + short(x.sent_at) : ""}</small></span><span class="pr-row-r">${x.signed_up ? '<span class="st replied">Inscrit</span>' : ""}<span class="st ${x.status}">${OSTATUS[x.status]}</span></span></li>`).join("")}</ul></div>`;
+    }).join("") : '<p class="blk-empty">Aucun club dans cette catégorie.</p>';
+
+    $("wl").innerHTML = waitlist.length ? waitlist.map((x) => `<tr><td>${short(x.created_at)}</td><td>${esc(x.email)}</td><td>${esc(x.club || "")}</td><td>${esc(x.role || "")}</td></tr>`).join("") : '<tr><td colspan="4" class="muted">Aucune inscription pour l’instant.</td></tr>';
+    $("cm").innerHTML = contacts.length ? `<div class="blk"><ul>${contacts.map((x) => `<li style="cursor:default"><span class="nm"><b>${esc(x.name)}${x.club ? " — " + esc(x.club) : ""}</b><small>${esc(x.email)} — ${short(x.created_at)}${x.topic ? " — " + esc(x.topic) : ""}</small><div class="pr-quote">${esc(x.message)}</div></span></li>`).join("")}</ul></div>` : '<p class="blk-empty">Aucun message pour l’instant.</p>';
+  }
+
+  function openOut(x) {
+    editingOut = x;
+    $("odlg-title").textContent = x.club;
+    $("o-meta").textContent = (x.division === "N2" ? x.ligue : x.division + " — " + x.ligue) + " · envoi n° " + x.send_day + (x.email_relance ? " · relance possible sur " + x.email_relance : "");
+    $("o-to").textContent = x.email; $("o-subject").textContent = x.subject; $("o-body").textContent = x.message;
+    $("o-status").value = x.status; $("o-sent").value = toLocal(x.sent_at);
+    $("o-reply").value = x.reply || ""; $("o-replied").value = toLocal(x.replied_at);
+    $("o-signed").checked = !!x.signed_up; $("o-note").value = x.note || ""; $("o-msg").textContent = "";
+    $("odlg").showModal();
+  }
+  async function saveOut() {
+    const reply = $("o-reply").value.trim();
+    let status = $("o-status").value;
+    if (reply && status === "sent") status = "replied";
+    const rec = { status, sent_at: fromLocal($("o-sent").value) || (status !== "to_send" ? editingOut.sent_at || new Date().toISOString() : null),
+      reply: reply || null, replied_at: fromLocal($("o-replied").value) || (reply ? editingOut.replied_at || new Date().toISOString() : null),
+      signed_up: $("o-signed").checked, note: $("o-note").value.trim() || null, updated_at: new Date().toISOString() };
+    $("o-save").disabled = true;
+    const { error } = await sb.from("outreach").update(rec).eq("id", editingOut.id);
+    $("o-save").disabled = false;
+    if (error) return fail("o-msg", error);
+    $("odlg").close(); await load();
   }
 
   // Sommes min/max des dépenses à venir (optionnelles et montants inconnus exclus)
@@ -532,7 +674,7 @@ body{background:var(--bg)}
   }
 
   // ----- Onglets (mémorisés dans l'adresse : #depenses, #recettes, #taches, #reussi) -----
-  const TABS = ["depenses", "recettes", "taches", "reussi"];
+  const TABS = ["depenses", "recettes", "taches", "reussi", "prospection"];
   function showTab(name) {
     if (!TABS.includes(name)) name = "depenses";
     for (const t of TABS) {
@@ -596,6 +738,14 @@ body{background:var(--bg)}
   $("t-del").addEventListener("click", delTask);
   $("task-blocks").addEventListener("click", (e) => { const li = e.target.closest("[data-task]"); if (li) openTask(tasks.find((x) => x.id === li.dataset.task)); });
   $("rev-blocks").addEventListener("click", (e) => { const li = e.target.closest("[data-rev]"); if (li) openRev(revenues.find((r) => r.id === li.dataset.rev)); });
+  $("o-save").addEventListener("click", saveOut);
+  ["pr-list", "pr-replies"].forEach((id) => $(id).addEventListener("click", (e) => { const li = e.target.closest("[data-out]"); if (li) openOut(outreach.find((x) => String(x.id) === li.dataset.out)); }));
+  $("pr-filters").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-f]"); if (!b) return;
+    prFilter = b.dataset.f;
+    $("pr-filters").querySelectorAll("button").forEach((x) => x.setAttribute("aria-pressed", x === b));
+    renderPros();
+  });
   sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_IN" || ev === "SIGNED_OUT") show(); });
   show();
 })();
