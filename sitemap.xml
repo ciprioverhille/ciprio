@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://ciprio.ai/</loc><lastmod>2026-10-31</lastmod><priority>1.0</priority></url>
-  <url><loc>https://ciprio.ai/blog</loc><lastmod>2026-10-31</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ciprio.ai/blog</loc><lastmod>2026-11-07</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ciprio.ai/blog/how-to-run-a-football-video-debrief</loc><lastmod>2026-11-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/blog/how-to-analyse-a-football-match-video</loc><lastmod>2026-10-31</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/blog/game-plan-vs-reality</loc><lastmod>2026-10-24</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/blog/counter-pressing-five-second-rule</loc><lastmod>2026-10-17</lastmod><priority>0.7</priority></url>
@@ -12,7 +13,8 @@
   <url><loc>https://ciprio.ai/terms</loc><lastmod>2026-10-31</lastmod><priority>0.3</priority></url>
   <url><loc>https://ciprio.ai/legal</loc><lastmod>2026-10-31</lastmod><priority>0.3</priority></url>
   <url><loc>https://ciprio.ai/fr</loc><lastmod>2026-11-03</lastmod><priority>1.0</priority></url>
-  <url><loc>https://ciprio.ai/fr/blog</loc><lastmod>2026-11-03</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ciprio.ai/fr/blog</loc><lastmod>2026-11-07</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ciprio.ai/fr/blog/how-to-run-a-football-video-debrief</loc><lastmod>2026-11-07</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/fr/blog/how-to-analyse-a-football-match-video</loc><lastmod>2026-11-03</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/fr/blog/game-plan-vs-reality</loc><lastmod>2026-11-03</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/fr/blog/counter-pressing-five-second-rule</loc><lastmod>2026-11-03</lastmod><priority>0.7</priority></url>
