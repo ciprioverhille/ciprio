@@ -46,6 +46,7 @@
     <button role="tab" id="tab-recettes" aria-controls="p-recettes" data-tab="recettes">Recettes</button>
     <button role="tab" id="tab-taches" aria-controls="p-taches" data-tab="taches">Tâches <span class="tab-count" id="todo-count"></span></button>
     <button role="tab" id="tab-reussi" aria-controls="p-reussi" data-tab="reussi">Réalisations</button>
+    <button role="tab" id="tab-etapes" aria-controls="p-etapes" data-tab="etapes">Étapes</button>
     <button role="tab" id="tab-prospection" aria-controls="p-prospection" data-tab="prospection">Prospection <span class="tab-count" id="reply-count"></span></button>
   </div>
 
@@ -107,6 +108,14 @@
       <div><h1>Réalisations</h1><p class="muted">Ce qui marche à coup sûr et n'a plus besoin d'être amélioré.</p></div>
     </div>
     <ol class="ach-list" id="ach-list"></ol>
+  </section>
+
+  <!-- Onglet Étapes : chaque étape s'ouvre sur son déroulé daté (ce qui n'a pas marché, pourquoi, ce qui marche) -->
+  <section class="adm-panel" role="tabpanel" id="p-etapes" aria-labelledby="tab-etapes" hidden>
+    <div class="adm-sec-head">
+      <div><h1>Étapes</h1><p class="muted">Cliquer sur une étape pour voir tout le chemin parcouru, pour ne pas refaire les mêmes erreurs.</p></div>
+    </div>
+    <div id="step-list"></div>
   </section>
 
   <!-- Onglet Prospection -->
@@ -271,6 +280,30 @@ body{background:var(--bg)}
 .ach-list p{margin:4px 0 0;font-size:.92rem}
 .ach-list .ach-proof{margin-top:8px;font-size:.82rem;color:var(--muted)}
 .ach-list time{font-family:var(--f-mono);font-size:.7rem;color:var(--muted);float:right;margin-left:12px}
+.step{background:var(--surface);border:1px solid var(--line);border-radius:12px;margin-bottom:12px}
+.step>summary{list-style:none;cursor:pointer;padding:18px 20px;display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.step>summary::-webkit-details-marker{display:none}
+.step>summary::after{content:"+";margin-left:auto;font-family:var(--f-mono);color:var(--muted)}
+.step[open]>summary::after{content:"–"}
+.step-num{font-family:var(--f-mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.step-name{font-size:1.15rem;font-weight:600;letter-spacing:-.02em}
+.step-meta{font-size:.82rem;color:var(--muted)}
+.tl{list-style:none;margin:0;padding:0 20px 20px 20px}
+.tl li{position:relative;padding:0 0 18px 26px;border-left:2px solid var(--line);margin-left:6px}
+.tl li:last-child{border-left-color:transparent;padding-bottom:0}
+.tl li::before{content:"";position:absolute;left:-7px;top:3px;width:12px;height:12px;border-radius:99px;background:#fff;border:2px solid #b9b9b9}
+.tl li.echec::before{border-color:#c0392b;background:#fdecea}
+.tl li.partiel::before{border-color:#c98a00;background:#fff4dc}
+.tl li.reussite::before{border-color:#1d6b37;background:#e6f4ea}
+.tl li.a_prouver::before{border-color:#2a4fb8;background:#eef3ff}
+.tl time{font-family:var(--f-mono);font-size:.7rem;color:var(--muted)}
+.tl .tag{font-family:var(--f-mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;padding:1px 7px;border-radius:99px;margin-left:8px;border:1px solid var(--line)}
+.tl .echec .tag{color:#a3281c;background:#fdecea;border-color:#f3c3bd}
+.tl .partiel .tag{color:#7a5600;background:#fff4dc;border-color:#f1d79a}
+.tl .reussite .tag{color:#1d6b37;background:#e6f4ea;border-color:#b9dfc5}
+.tl .a_prouver .tag{color:#2a4fb8;background:#eef3ff;border-color:#cfdcff}
+.tl b{display:block;margin-top:4px;font-size:.98rem;letter-spacing:-.01em}
+.tl p{margin:4px 0 0;font-size:.9rem;color:var(--ink);opacity:.85}
 .who{font-family:var(--f-mono);font-size:.68rem;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap;align-self:flex-start}
 .who.moi{background:#fff4dc;border-color:#f1d79a;color:#7a5600}
 .who.claude{background:#eef3ff;border-color:#cfdcff;color:#2a4fb8}
@@ -390,6 +423,7 @@ body{background:var(--bg)}
   ];
   const ORDER = ["paid", "now", "launch_month", "launch_once", "match", "extra"];
 
+  let steplog = [];
   let rows = [], revenues = [], changes = [], tasks = [], achievements = [], editing = null, editingRev = null, editingTask = null;
   const TASK_GROUPS = [
     { key: "waiting", title: "En attente", sub: "Bloqué tant que ce n'est pas fait." },
@@ -427,7 +461,7 @@ body{background:var(--bg)}
   }
 
   async function load() {
-    const [e, r, c, k, a, o, w, m] = await Promise.all([
+    const [e, r, c, k, a, o, w, m, st] = await Promise.all([
       sb.from("expenses").select("*").order("sort").order("created_at"),
       sb.from("revenues").select("*").order("received_on", { ascending: false }),
       sb.from("expense_changes").select("*").order("created_at", { ascending: false }).limit(100),
@@ -436,10 +470,12 @@ body{background:var(--bg)}
       sb.from("outreach").select("*").order("id"),
       sb.from("waitlist").select("*").order("created_at", { ascending: false }),
       sb.from("contact_messages").select("*").order("created_at", { ascending: false }),
+      sb.from("step_log").select("*").order("step").order("sort").order("happened_on"),
     ]);
     const err = e.error || r.error || c.error || k.error || a.error;
     if (err) { $("exp-blocks").innerHTML = '<p class="form-msg err">Erreur de chargement : ' + esc(err.message) + "</p>"; return; }
     rows = e.data; revenues = r.data; changes = c.data; tasks = k.data; achievements = a.data;
+    steplog = (st && st.data) || [];
     outreach = o.data || []; waitlist = w.data || []; contacts = m.data || [];
     render(); renderPros();
   }
@@ -560,6 +596,19 @@ body{background:var(--bg)}
     }).join("") || '<p class="blk-empty">Aucune tâche.</p>';
 
     // Réalisations
+    // Étapes : une carte par étape, qui s'ouvre sur son déroulé daté
+    const OUT = { echec: "N'a pas marché", partiel: "En partie", reussite: "A marché", a_prouver: "Censé marcher, à prouver" };
+    const bySteps = {};
+    for (const x of steplog) (bySteps[x.step] = bySteps[x.step] || []).push(x);
+    $("step-list").innerHTML = Object.keys(bySteps).sort((p, q) => p - q).map((n) => {
+      const L = bySteps[n], d0 = L[0].happened_on, d1 = L[L.length - 1].happened_on;
+      const fd = (d) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+      return `<details class="step"><summary><span class="step-num">Étape ${n}</span><span class="step-name">${esc(L[0].step_title)}</span>
+        <span class="step-meta">${L.length} essais, du ${fd(d0)} au ${fd(d1)}</span></summary>
+        <ol class="tl">${L.map((x) => `<li class="${x.outcome}"><time datetime="${x.happened_on}">${fd(x.happened_on)}</time><span class="tag">${OUT[x.outcome] || x.outcome}</span>
+          <b>${esc(x.title)}</b>${x.why ? `<p>${esc(x.why)}</p>` : ""}</li>`).join("")}</ol></details>`;
+    }).join("") || '<p class="blk-empty">Aucune étape.</p>';
+
     $("ach-list").innerHTML = achievements.map((x) => `<li><time datetime="${x.achieved_on}">${new Date(x.achieved_on).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</time><b>${esc(x.title)}</b>${x.detail ? `<p>${esc(x.detail)}</p>` : ""}${x.proof ? `<p class="ach-proof">${esc(x.proof)}</p>` : ""}</li>`).join("") || '<li>Rien pour l’instant.</li>';
 
     $("k-result").innerHTML = `<span class="${res > 0 ? "pos" : res < 0 ? "neg" : ""}">${res > 0 ? "+" : ""}${eur0.format(res)}</span>`;
@@ -674,7 +723,7 @@ body{background:var(--bg)}
   }
 
   // ----- Onglets (mémorisés dans l'adresse : #depenses, #recettes, #taches, #reussi) -----
-  const TABS = ["depenses", "recettes", "taches", "reussi", "prospection"];
+  const TABS = ["depenses", "recettes", "taches", "reussi", "etapes", "prospection"];
   function showTab(name) {
     if (!TABS.includes(name)) name = "depenses";
     for (const t of TABS) {
