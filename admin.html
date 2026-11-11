@@ -53,26 +53,15 @@
   <!-- Onglet Dépenses -->
   <section class="adm-panel" role="tabpanel" id="p-depenses" aria-labelledby="tab-depenses">
     <div class="adm-sec-head">
-      <div><h1>Dépenses</h1><p class="muted">Ce que Ciprio coûte, rangé selon <b>quand</b> je le paie. Clique sur une ligne pour la modifier.</p></div>
+      <div><h1>Dépenses</h1><p class="muted">Les <b>coûts fixes</b> (chaque mois, quel que soit le nombre de clubs) et les <b>coûts d'analyse</b> (pour chaque match, en 3 étapes). Clique sur une ligne pour la modifier.</p></div>
       <button class="btn btn-ink" id="add-exp" type="button">+ Ajouter une dépense</button>
     </div>
     <div class="adm-kpis">
       <div class="adm-card"><span class="k">Dépensé à ce jour</span><b id="k-spent">–</b><small id="k-spent-d"></small></div>
-      <div class="adm-card"><span class="k">Chaque mois, quand Ciprio vendra</span><b id="k-fixed">–</b><small>abonnements obligatoires</small></div>
-      <div class="adm-card"><span class="k">Par match analysé</span><b id="k-match">–</b><small>calcul, stockage, rapport</small></div>
+      <div class="adm-card"><span class="k">Coûts fixes</span><b id="k-fixed">–</b><small>par mois, quand Ciprio vendra</small></div>
+      <div class="adm-card"><span class="k">Coût d'analyse</span><b id="k-match">–</b><small>par match, les 3 étapes</small></div>
     </div>
     <div id="exp-blocks"></div>
-
-    <h2 class="adm-h2">Prévisions</h2>
-    <div class="adm-card adm-sim">
-      <label for="n">Si Ciprio analyse <b id="n-val">80</b> matchs par mois</label>
-      <input id="n" type="range" min="0" max="500" step="5" value="80">
-      <p class="adm-sentence" id="sentence"></p>
-      <p class="muted adm-small">Exemple : 20 clubs × 4 matchs = 80 matchs. Ne compte ni les dépenses « une seule fois », ni les dépenses optionnelles, ni les montants encore inconnus.</p>
-    </div>
-    <div class="adm-scroll">
-      <table class="adm-table"><thead><tr><th>Matchs par mois</th><th class="num">Dépenses par mois</th><th class="num">Dépenses par an</th><th class="num">Chaque match doit rapporter au moins</th></tr></thead><tbody id="fore"></tbody></table>
-    </div>
 
     <h2 class="adm-h2">Historique des changements</h2>
     <ol class="adm-log" id="log"></ol>
@@ -205,6 +194,7 @@
     <datalist id="cats"><option>Site</option><option>Données</option><option>Analyse</option><option>Outils</option><option>Société</option><option>Juridique</option><option>Marketing</option><option>Autre</option></datalist>
     <div class="row2">
       <div class="field"><label for="e-phase">Quand</label><select id="e-phase"><option value="now">Aujourd'hui</option><option value="launch">Quand Ciprio vendra</option><option value="later">Plus tard</option></select></div>
+      <div class="field"><label for="e-section">Rubrique</label><select id="e-section"><option value="fixe">Coûts fixes</option><option value="terrain">Analyse 1 · Mesure du terrain</option><option value="joueurs">Analyse 2 · Suivi des joueurs</option><option value="tactique">Analyse 3 · Suivi tactique</option><option value="">Non affichée (historique)</option></select></div>
       <div class="field"><label for="e-billing">Facturation</label><select id="e-billing"><option value="once">Une seule fois</option><option value="monthly">Par mois</option><option value="yearly">Par an</option><option value="per_match">Par match analysé</option></select></div>
     </div>
     <div class="row2">
@@ -409,6 +399,7 @@ body{background:var(--bg)}
   const dayFmt = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const BILLING = { once: "une seule fois", monthly: "par mois", yearly: "par an", per_match: "par match" };
   const STATUS = { planned: "Prévu", active: "En cours", paid: "Déjà payé", optional: "Optionnel" };
+  const STATUS_SHORT = { planned: "au lancement", active: "en cours", optional: "" };
   const SOURCES = { subscription: "Abonnements", match: "Analyses de matchs à l'unité", other: "Autres recettes" };
   const SCENARIOS = [0, 20, 50, 100, 250, 500];
 
@@ -550,6 +541,7 @@ body{background:var(--bg)}
       const lo = num(r.amount_min), hi = num(r.amount_max) ?? lo;
       if (r.status === "paid") { if (lo === null) t.paidUnknown++; else t.paid += hi; continue; }
       if (r.status === "optional" || lo === null) continue;
+      if (!r.section) continue;
       const k = r.billing === "once" ? "once" : r.billing === "per_match" ? "match" : "fixed";
       const div = r.billing === "yearly" ? 12 : 1;
       t[k][0] += lo / div; t[k][1] += hi / div;
@@ -572,7 +564,7 @@ body{background:var(--bg)}
   }
 
   function render() {
-    const t = sums(), n = Number($("n").value), m = month(t, n);
+    const t = sums();
     const earned = revenues.reduce((s, r) => s + Number(r.amount), 0);
 
     // En bref
@@ -613,18 +605,38 @@ body{background:var(--bg)}
 
     $("k-result").innerHTML = `<span class="${res > 0 ? "pos" : res < 0 ? "neg" : ""}">${res > 0 ? "+" : ""}${eur0.format(res)}</span>`;
 
-    // 1. Dépenses
-    $("exp-blocks").innerHTML = ORDER.map((key) => {
-      const b = BLOCKS.find((x) => x.key === key);
-      const list = rows.filter((r) => blockOf(r) === key);
-      if (!list.length) return "";
-      return `<div class="blk"><div class="blk-head"><h3>${b.title}<small>${b.sub}</small></h3><span class="blk-total">${blockTotal(key, list)}</span></div>
-        <ul>${list.map((r) => `
+    // 1. Dépenses : coûts fixes, puis coûts d'analyse par match en 3 étapes
+    const line = (r) => `
           <li data-exp="${r.id}" class="${r.status === "optional" ? "opt" : ""}">
-            <span class="nm"><b>${esc(r.name)}</b><small>${esc(r.provider || "")}${r.explanation ? " — " + esc(r.explanation) : ""}${r.status === "optional" ? " (optionnel)" : ""}</small></span>
-            <span class="amt">${amountText(r)}<small>${BILLING[r.billing]}</small></span>
-          </li>`).join("")}</ul></div>`;
-    }).join("");
+            <span class="nm"><b>${esc(r.name)}</b><small>${esc(r.provider || "")}${r.explanation ? " — " + esc(r.explanation) : ""}${r.status === "optional" ? " (optionnel)" : ""}${r.note ? `<br><i>${esc(r.note)}</i>` : ""}</small></span>
+            <span class="amt">${amountText(r)}<small>${BILLING[r.billing]}${STATUS_SHORT[r.status] ? " · " + STATUS_SHORT[r.status] : ""}</small></span>
+          </li>`;
+    const total = (list, kind) => {
+      let lo = 0, hi = 0, unk = 0;
+      for (const r of list) {
+        if (r.status === "optional" || r.billing === "once") continue;
+        if (kind === "match" && r.billing !== "per_match") continue;
+        const a = num(r.amount_min), b2 = num(r.amount_max) ?? a;
+        if (a === null) { unk++; continue; }
+        const d = r.billing === "yearly" ? 12 : 1; lo += a / d; hi += b2 / d;
+      }
+      return (kind === "match" ? rng(lo, hi, eur) + " par match" : rng(lo, hi) + " par mois") + (unk ? ` <small class="unk">+ ${unk} à compléter</small>` : "");
+    };
+    const fixes = rows.filter((r) => r.section === "fixe");
+    const STAGES = [["terrain", "1 · Mesure du terrain", "Quadriller le terrain : photos repères, calcul de la caméra, suivi des repères."],
+      ["joueurs", "2 · Suivi des joueurs", "Repérer les joueurs et le ballon, séparer les deux équipes, l'arbitre et les supporters."],
+      ["tactique", "3 · Suivi tactique", "Suivre chaque joueur et en tirer les données : passes, possession, courses, pressing, extraits vidéo, rapport."]];
+    const ana = rows.filter((r) => ["terrain", "joueurs", "tactique"].includes(r.section));
+    $("exp-blocks").innerHTML =
+      `<h2 class="adm-h2">Coûts fixes</h2>
+       <div class="blk"><div class="blk-head"><h3>Chaque mois, quel que soit le nombre de clubs<small>Les montants « par an » sont ramenés au mois dans le total.</small></h3><span class="blk-total">${total(fixes, "fixed")}</span></div>
+       <ul>${fixes.map(line).join("")}</ul></div>
+       <h2 class="adm-h2">Coûts d'analyse par match</h2><p class="muted adm-small">Ce que coûte chaque match analysé, étape par étape. Total : <b>${total(ana, "match")}</b>.</p>` +
+      STAGES.map(([k, t, sub]) => {
+        const list = rows.filter((r) => r.section === k);
+        return `<div class="blk"><div class="blk-head"><h3>${t}<small>${sub}</small></h3><span class="blk-total">${total(list, "match")}</span></div>
+          <ul>${list.map(line).join("") || '<li class="blk-empty">Rien pour l’instant.</li>'}</ul></div>`;
+      }).join("");
 
     // 2. Recettes
     $("rev-blocks").innerHTML = Object.entries(SOURCES).map(([src, title]) => {
@@ -634,15 +646,6 @@ body{background:var(--bg)}
         ${list.length ? `<ul>${list.map((r) => `
           <li data-rev="${r.id}"><span class="nm"><b>${esc(r.client || "Client")}</b><small>${dayFmt.format(new Date(r.received_on))}${r.description ? " — " + esc(r.description) : ""}${r.matches ? " — " + r.matches + " match(s)" : ""}</small></span>
           <span class="amt">${eur.format(r.amount)}</span></li>`).join("")}</ul>` : `<p class="blk-empty">Aucune recette pour l'instant. Elles apparaîtront ici dès le premier club payant.</p>`}</div>`;
-    }).join("");
-
-    // 3. Prévisions
-    $("n-val").textContent = n;
-    $("sentence").innerHTML = `Je dépenserai environ <b>${rng(...m)} par mois</b>, soit <b>${rng(m[0] * 12, m[1] * 12)} par an</b>.` +
-      (n ? ` Pour ne pas perdre d'argent, chaque match devra rapporter au moins <b>${rng(m[0] / n, m[1] / n, eur)}</b>.` : "");
-    $("fore").innerHTML = [...new Set([...SCENARIOS, n])].sort((a, b) => a - b).map((s) => {
-      const mm = month(t, s);
-      return `<tr class="${s === n ? "cur" : ""}"><td>${s}</td><td class="num">${rng(...mm)}</td><td class="num">${rng(mm[0] * 12, mm[1] * 12)}</td><td class="num">${s ? rng(mm[0] / s, mm[1] / s, eur) : "–"}</td></tr>`;
     }).join("");
 
     // 4. Historique
@@ -658,7 +661,7 @@ body{background:var(--bg)}
     editing = r || null;
     $("dlg-title").textContent = r ? "Modifier la dépense" : "Nouvelle dépense";
     $("e-name").value = r?.name || ""; $("e-provider").value = r?.provider || ""; $("e-category").value = r?.category || "Autre";
-    $("e-phase").value = r?.phase || "launch"; $("e-billing").value = r?.billing || "monthly";
+    $("e-phase").value = r?.phase || "launch"; $("e-billing").value = r?.billing || "monthly"; $("e-section").value = r ? (r.section || "") : "fixe";
     $("e-min").value = r?.amount_min ?? ""; $("e-max").value = r?.amount_max ?? "";
     $("e-status").value = r?.status || "planned"; $("e-url").value = r?.url || "";
     $("e-expl").value = r?.explanation || ""; $("e-note").value = r?.note || "";
@@ -671,7 +674,7 @@ body{background:var(--bg)}
     const min = num($("e-min").value), max = num($("e-max").value);
     const rec = {
       name, provider: $("e-provider").value.trim() || null, category: $("e-category").value.trim() || "Autre",
-      phase: $("e-phase").value, billing: $("e-billing").value, amount_min: min ?? max, amount_max: max ?? min,
+      phase: $("e-phase").value, billing: $("e-billing").value, section: $("e-section").value || null, amount_min: min ?? max, amount_max: max ?? min,
       status: $("e-status").value, url: $("e-url").value.trim() || null,
       explanation: $("e-expl").value.trim() || null, note: $("e-note").value.trim() || null, updated_at: new Date().toISOString(),
     };
@@ -780,7 +783,6 @@ body{background:var(--bg)}
   $("e-del").addEventListener("click", delExp);
   $("r-save").addEventListener("click", saveRev);
   $("r-del").addEventListener("click", delRev);
-  $("n").addEventListener("input", render);
   $("exp-blocks").addEventListener("click", (e) => { const li = e.target.closest("[data-exp]"); if (li) openExp(rows.find((r) => r.id === li.dataset.exp)); });
   $("add-task").addEventListener("click", () => openTask(null));
   $("t-save").addEventListener("click", saveTask);
