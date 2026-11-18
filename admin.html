@@ -278,6 +278,21 @@ body{background:var(--bg)}
 .step-num{font-family:var(--f-mono);font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
 .step-name{font-size:1.15rem;font-weight:600;letter-spacing:-.02em}
 .step-meta{font-size:.82rem;color:var(--muted)}
+.step-done{font-family:var(--f-mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:99px;color:#1d6b37;background:#e6f4ea;border:1px solid #b9dfc5}
+.howto{margin:0 20px 18px;border:1px solid var(--line);border-radius:10px;background:#fafaf9}
+.howto>summary{list-style:none;cursor:pointer;padding:12px 16px;font-weight:600;font-size:.92rem;display:flex;gap:10px;align-items:center}
+.howto>summary::-webkit-details-marker{display:none}
+.howto>summary::before{content:"→";font-family:var(--f-mono);color:var(--muted);transition:transform .15s}
+.howto[open]>summary::before{transform:rotate(90deg)}
+.howto .hw{padding:0 18px 18px;font-size:.9rem;line-height:1.55}
+.howto h4{margin:18px 0 6px;font-family:var(--f-mono);font-size:.7rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:500}
+.howto ol,.howto ul{margin:0;padding-left:20px}
+.howto li{margin:4px 0}
+.howto code{font-family:var(--f-mono);font-size:.8rem;background:#f0f1ef;padding:1px 5px;border-radius:4px}
+.howto .res{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin:8px 0}
+.howto .res div{background:#fff;padding:10px 12px}
+.howto .res b{display:block;font-family:var(--f-mono);font-size:1.05rem}
+.howto .res span{font-size:.75rem;color:var(--muted)}
 .tl{list-style:none;margin:0;padding:0 20px 20px 20px}
 .tl li{position:relative;padding:0 0 18px 26px;border-left:2px solid var(--line);margin-left:6px}
 .tl li:last-child{border-left-color:transparent;padding-bottom:0}
@@ -589,6 +604,55 @@ body{background:var(--bg)}
 
     // Réalisations
     // Étapes : une carte par étape, qui s'ouvre sur son déroulé daté
+    // étapes terminées, et le fonctionnement complet de l'outil (« Plus de détails sur le fonctionnement de l'outil ? »)
+    const STEP_DONE = { 1: "18 nov. 2026" };
+    const HOWTO = { 1: `
+      <p><b>But :</b> savoir, à chaque image du match, où est chaque ligne du terrain, au pixel près. Tout le reste (positions des joueurs en mètres, distances, zones) en dépend. Caméra visée : <b>Veo</b> uniquement.</p>
+      <div class="res"><div><b>90 min</b><span>test final J24 Balma–JET</span></div><div><b>31 250</b><span>images suivies, 0 perdue</span></div><div><b>98-100 %</b><span>recalées sur une photo repère</span></div><div><b>0-1,5 px</b><span>médiane, rond, surfaces</span></div></div>
+      <h4>1. Préparation (Ciprio seul, avant que le coach voie quoi que ce soit)</h4>
+      <ol>
+        <li>La vidéo est copiée sur l'ordinateur, dans un dossier neuf : aucun ancien pointage n'est réutilisé.</li>
+        <li><code>etape1.py mini</code> : une photo repère toutes les 30 s ; les photos sont reliées entre elles par le décor (arbres, poteaux, tribunes) ; Ciprio calcule l'orientation de la caméra (rotation + zoom : la caméra ne se déplace pas) sans aucun repère ; puis il balaie tout le match toutes les 2 s.</li>
+        <li>Lecture du déroulé : coup d'envoi, mi-temps (terrain vide), fin, moments inutiles (caméra tournée vers le banc…).</li>
+      </ol>
+      <h4>2. Carte provisoire (Claude, à l'œil)</h4>
+      <ol>
+        <li>Sur des vues calmes (caméra immobile), toutes prises dans une même fenêtre d'environ 10 minutes (au-delà, le calcul sans repère dérive), Claude repère grossièrement le centre et les deux coins.</li>
+        <li>Les dimensions du stade sont utilisées quand elles sont connues (105 × 68), sinon mesurées.</li>
+        <li>Cette carte ne sert qu'à <b>chercher les bonnes images</b>. Elle est dessinée sur 6 images pour vérifier qu'elle tombe sur la peinture à quelques mètres près.</li>
+      </ol>
+      <h4>3. Images proposées au coach : un seul tour, tout demandé d'un coup</h4>
+      <ul>
+        <li>Pour chaque zone, la meilleure image de <b>tout le match</b> : surfaces en vue zoomée et calme, surface entière visible, personne debout sur un repère (jamais de corner ni de coup franc) ; rond central à la mi-temps, terrain vide ; coins nets.</li>
+        <li>Contre-jour : une surface éblouie dans une mi-temps est prise dans l'autre.</li>
+        <li>Médiane × touche côté caméra : demandée seulement si le croisement est vraiment dans l'image (vérifié au zoom). Sinon, on demande le point le plus bas visible de la médiane. Un clic tout en bas de l'image est converti automatiquement.</li>
+        <li>Chaque repère demandé est vérifié à l'œil, zoomé, sur son image. Un repère invisible partout n'est pas demandé : il sera calculé.</li>
+        <li>Vérification automatique avant d'envoyer la page : <code>completer_direct.py … verifier</code> doit confirmer que <b>tous</b> les repères utiles sont demandés.</li>
+      </ul>
+      <h4>4. La page du coach</h4>
+      <ul>
+        <li>Style ciprio.ai, en français ou en anglais. Sous l'image, une barre toujours visible : le repère à pointer, combien il en reste, « Je ne peux pas le pointer », image suivante.</li>
+        <li>Le coach clique chaque repère (une loupe aide à viser) ou dit qu'il ne peut pas. Quand la liste d'une image est finie, plus rien n'est proposé : « Tout est fait sur cette image ✓ ».</li>
+        <li>Une fois tout traité, Ciprio dessine en pointillés orange les formes (surfaces, rond) là où le coach a pointé au moins 2 de leurs repères sur cette image, et place les repères manquants. Le coach les corrige s'il le faut ; ceux qu'il laisse comptent comme placés.</li>
+        <li>Aucune nouvelle image à la fin : ce qui manque est calculé. Un seul passage, environ 2 minutes.</li>
+      </ul>
+      <h4>5. Calage et suivi (automatique)</h4>
+      <ol>
+        <li><code>etape1.py apres … veo début-fin,début-fin</code> : les images pointées s'ajoutent aux photos repères ; calcul global de la caméra (≈ 0,35 px d'écart sur le décor) ; détection d'une caméra déplacée pendant le match.</li>
+        <li>Chaque photo repère est recalée directement sur chaque image pointée (contrôle : 0,1 px médian).</li>
+        <li>Les repères non pointés sont calculés à partir des autres, puis suivis comme les autres (en orange dans la vidéo).</li>
+        <li>La caméra est suivie à <b>chaque image</b> (5 par seconde) sur les deux mi-temps, en 14 morceaux en parallèle, puis les deux vidéos sont recollées.</li>
+        <li>Les lignes sont tracées de repère en repère, par morceaux : la Veo est faite de deux caméras raccordées au milieu.</li>
+      </ol>
+      <h4>6. Contrôle qualité</h4>
+      <ul>
+        <li>Mesure automatique de l'écart entre chaque ligne tracée et la peinture (attendu : 0-2 px sur médiane, rond, surfaces). Un écart anormal sur une ligne proche signale un clic faux, qui est corrigé avant de relancer.</li>
+        <li>Vérification à l'œil de 8 à 16 images réparties sur tout le match.</li>
+        <li>Vidéo de contrôle du match entier. Les traits bleus ont l'épaisseur de la vraie peinture à cet endroit : fins au loin, plus épais devant.</li>
+      </ul>
+      <h4>Ce qui reste manuel</h4>
+      <p>La carte provisoire (2) et le choix final des images à l'œil (3) sont faits par Claude. Il faudra les automatiser pour que l'outil tourne seul pour chaque club.</p>
+      <p style="margin-top:10px;color:var(--muted);font-size:.8rem">Méthode complète : <code>ciprio-lab/METHODE_REPERES.md</code>, section ★★★, étapes A à F.</p>` };
     const OUT = { echec: "N'a pas marché", partiel: "En partie", reussite: "A marché", a_prouver: "Censé marcher, à prouver" };
     const bySteps = {};
     for (const x of steplog) (bySteps[x.step] = bySteps[x.step] || []).push(x);
@@ -596,7 +660,8 @@ body{background:var(--bg)}
       const L = bySteps[n], d0 = L[0].happened_on, d1 = L[L.length - 1].happened_on;
       const fd = (d) => new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
       return `<details class="step"><summary><span class="step-num">Étape ${n}</span><span class="step-name">${esc(L[0].step_title)}</span>
-        <span class="step-meta">${L.length} essais, du ${fd(d0)} au ${fd(d1)}</span></summary>
+        <span class="step-meta">${L.length} essais, du ${fd(d0)} au ${fd(d1)}</span>${STEP_DONE[n] ? `<span class="step-done">Terminée · ${STEP_DONE[n]}</span>` : ""}</summary>
+        ${HOWTO[n] ? `<details class="howto"><summary>Plus de détails sur le fonctionnement de l'outil ?</summary><div class="hw">${HOWTO[n]}</div></details>` : ""}
         <ol class="tl">${L.map((x) => `<li class="${x.outcome}"><time datetime="${x.happened_on}">${fd(x.happened_on)}</time><span class="tag">${OUT[x.outcome] || x.outcome}</span>
           <b>${esc(x.title)}</b>${x.why ? `<p>${esc(x.why)}</p>` : ""}</li>`).join("")}</ol></details>`;
     }).join("") || '<p class="blk-empty">Aucune étape.</p>';
