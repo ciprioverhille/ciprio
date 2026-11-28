@@ -512,26 +512,102 @@
 
   // ================================================================ VIDÉOS
   let filtre = "tous", recherche = "";
+  const VIG = {};                                   // vignette de chaque match : 1re image choisie par Ciprio (lien signé)
+  async function vignettes(ids) {
+    const manque = ids.filter((id) => !(id in VIG));
+    if (!manque.length) return;
+    manque.forEach((id) => (VIG[id] = null));
+    const { data } = await sb.from("images_pointage").select("match_id,chemin,ordre").in("match_id", manque).order("ordre");
+    const premiere = {};
+    (data || []).forEach((x) => { if (!premiere[x.match_id]) premiere[x.match_id] = x.chemin; });
+    const chemins = Object.values(premiere);
+    if (!chemins.length) return;
+    const { data: urls } = await sb.storage.from("pointage").createSignedUrls(chemins, 3600);
+    const par = Object.fromEntries((urls || []).map((u) => [u.path, u.signedUrl]));
+    for (const [id, c] of Object.entries(premiere)) VIG[id] = par[c] || null;
+  }
+  const resultat = (m) => (m.score_nous != null && m.score_eux != null ? (m.score_nous > m.score_eux ? "V" : m.score_nous < m.score_eux ? "D" : "N") : "");
+  function vrow(m) {
+    const d = m.date_match ? new Date(m.date_match + "T12:00:00") : new Date(m.cree_le);
+    const i = ETATS.findIndex((x) => x.k === m.etat), p = m.plan || {}, nImg = D.nImg[m.id] || 0, nPt = D.nPt[m.id] || 0;
+    const fini = m.etat === "termine", err = m.etat === "erreur", r = resultat(m);
+    const lieu = m.domicile == null ? "" : m.domicile ? T("Home", "Domicile") : T("Away", "Extérieur");
+    let plus;
+    if (fini) {
+      plus = `<div class="vr-acts">
+          <a class="act" href="#/match/${m.id}/rapport"><b>${T("See the report", "Voir le rapport")}</b><small>${T("Game plan, measured", "Plan de jeu mesuré")}</small></a>
+          <a class="act" href="#/match/${m.id}/rapport"><b>${T("See the stats", "Voir les stats")}</b><small>${T("Team and players", "Équipe et joueurs")}</small></a>
+          <a class="act" href="#/match/${m.id}/plan"><b>${T("See the team", "Voir l'équipe")}</b><small>${p.systeme ? esc(p.systeme) + " · " : ""}${(p.composition || []).filter(Boolean).length}/11</small></a>
+          <a class="act" href="#/match/${m.id}/infos"><b>${T("See the result", "Voir le résultat")}</b><small>${esc(score(m) || T("Add the score", "Ajouter le score"))}</small></a>
+          <a class="act" href="#/match/${m.id}/plan"><b>${T("Game plan", "Plan de jeu")}</b><small>${esc(p.nom || T("None", "Aucun"))}</small></a>
+          ${nImg ? `<a class="act" href="/app/pointage?match=${m.id}"><b>${T("My markings", "Mes repères")}</b><small>${nPt}/${nImg} images</small></a>` : ""}
+        </div>`;
+    } else {
+      const action = m.etat === "a_pointer" ? `<a class="btn btn-ink btn-sm" href="/app/pointage?match=${m.id}">${T("Set up the pitch →", "Régler le terrain →")}</a>`
+        : `<a class="btn btn-ink btn-sm" href="#/match/${m.id}">${T("Open the match →", "Ouvrir le match →")}</a>`;
+      plus = `<div class="vr-steps"><ol>${ETATS.map((e, j) => `<li class="${err ? "" : j < i ? "on" : j === i ? "now" : ""}"><b>${String(j + 1).padStart(2, "0")}</b>${esc(T(e.en, e.fr))}</li>`).join("")}</ol></div>
+        <div class="vr-side">
+          <dl class="kv col"><div><dt>${T("Step", "Étape")}</dt><dd>${err ? "—" : `${i + 1} / ${ETATS.length}`}</dd></div>
+            <div><dt>${T("Images pointed", "Images pointées")}</dt><dd>${nImg ? `${nPt} / ${nImg}` : "—"}</dd></div>
+            <div><dt>${T("Updated", "Mis à jour")}</dt><dd>${esc(fmtDate(m.maj_le, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }))}</dd></div></dl>
+          ${err ? `<p class="small" style="color:var(--bad)">${T("A problem occurred. Ciprio has been notified.", "Un problème est survenu. Ciprio est prévenu.")}</p>` : action}
+        </div>`;
+    }
+    return `<div class="vrow ${fini ? "fini" : err ? "err" : "encours"}" data-m="${m.id}" tabindex="0">
+      <div class="vr-head">
+        <span class="vr-thumb" data-v="${m.id}"><i>${fini ? "▶" : ""}</i></span>
+        <a class="vr-title" href="#/match/${m.id}"><b>${esc(m.titre)}</b><small>${esc([m.competition, lieu].filter(Boolean).join(" · ") || T("Match", "Match"))}</small></a>
+        <span class="vr-date"><b>${d.getDate()}</b>${esc(fmtDate(d, { month: "short", year: "numeric" }).replace(".", ""))}</span>
+        <span class="vr-score">${score(m) ? `${esc(score(m))}${r ? `<i class="res res-${r}">${r}</i>` : ""}` : "—"}</span>
+        <span class="vr-plan">${p.nom ? `<b>${esc(p.nom)}</b><small>${esc(p.systeme || "")}</small>` : `<small>${T("No plan", "Pas de plan")}</small>`}</span>
+        <span class="vr-state">${pill(m.etat)}${!fini && !err ? `<span class="vr-bar"><i style="width:${pct(m.etat)}%"></i></span><small>${pct(m.etat)} %</small>` : ""}</span>
+        <span class="vr-chev" aria-hidden="true"></span>
+      </div>
+      <div class="vr-more"><div class="vr-in">
+        <div class="vr-vid" data-vid="${m.id}"><canvas></canvas><div class="vr-hud"><span><i></i>${fini ? T("Analysed", "Analysé") : err ? T("Stopped", "Arrêté") : T("Processing", "Traitement")}</span><b>${fini ? "100 %" : err ? "—" : pct(m.etat) + " %"}</b></div>${!fini && !err ? `<span class="vr-scan"></span>` : ""}</div>
+        ${plus}
+      </div></div>
+    </div>`;
+  }
   function videosView(f) {
     if (f) filtre = f;
     const F = { tous: () => true, pour_vous: (m) => m.etat === "a_pointer", en_cours: (m) => EN_COURS.includes(m.etat) && m.etat !== "a_pointer" || m.etat === "cree", termines: (m) => m.etat === "termine", erreur: (m) => m.etat === "erreur" };
     const noms = { tous: T("All", "Toutes"), pour_vous: T("Your turn", "À vous"), en_cours: T("In progress", "En cours"), termines: T("Done", "Terminées"), erreur: T("Problem", "Problème") };
+    const cams = new Map();
+    const fermer = (row) => { const s = cams.get(row); if (s) { s(); cams.delete(row); } };
+    const ouvrir = (row) => {
+      if (cams.has(row)) return;
+      const id = row.dataset.m, vid = row.querySelector(".vr-vid");
+      if (VIG[id]) { vid.style.backgroundImage = `url("${VIG[id]}")`; vid.classList.add("img"); cams.set(row, () => {}); return; }
+      if (window.CIPRIO_CAMERA) cams.set(row, CIPRIO_CAMERA.monter(vid.querySelector("canvas"), { mode: row.classList.contains("fini") ? "blanc" : "vert", haut: 0.36 }));
+    };
     const draw = () => {
+      cams.forEach((s) => s()); cams.clear();
       const q = recherche.toLowerCase();
       const L2 = D.matchs.filter(F[filtre]).filter((m) => !q || [m.titre, m.adversaire, m.competition].join(" ").toLowerCase().includes(q));
-      $("liste").innerHTML = L2.length ? L2.map(mrow).join("") : (D.matchs.length ? `<div class="co-card empty"><p>${T("No video matches this filter.", "Aucune vidéo pour ce filtre.")}</p></div>`
+      $("liste").innerHTML = L2.length ? `<div class="vlist"><div class="vl-h"><span></span><span>${T("Match", "Match")}</span><span>${T("Date", "Date")}</span><span>${T("Score", "Score")}</span><span>${T("Game plan", "Plan de jeu")}</span><span>${T("Status", "État")}</span><span></span></div>${L2.map(vrow).join("")}</div>`
+        : (D.matchs.length ? `<div class="co-card empty"><p>${T("No video matches this filter.", "Aucune vidéo pour ce filtre.")}</p></div>`
         : vide(ICON.video, T("No video yet", "Aucune vidéo pour l'instant"), T("Send your first match: Ciprio takes care of the rest.", "Envoyez votre premier match : Ciprio s'occupe du reste."), `<a class="btn btn-ink btn-sm" href="#/nouveau">${T("+ New video", "+ Nouvelle vidéo")}</a>`));
-      view.querySelectorAll(".chips button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.f === filtre)));
+      view.querySelectorAll(".seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.f === filtre)));
+      view.querySelectorAll(".vrow").forEach((row) => {
+        row.addEventListener("mouseenter", () => ouvrir(row));
+        row.addEventListener("mouseleave", () => { if (!row.classList.contains("open")) fermer(row); });
+        row.querySelector(".vr-head").addEventListener("click", (ev) => { if (ev.target.closest("a")) return; row.classList.toggle("open"); if (row.classList.contains("open")) ouvrir(row); else fermer(row); });
+        row.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && ev.target === row) { row.classList.toggle("open"); ouvrir(row); } });
+      });
+      vignettes(L2.map((m) => m.id)).then(() => view.querySelectorAll(".vr-thumb").forEach((t) => { const u = VIG[t.dataset.v]; if (u) { t.style.backgroundImage = `url("${u}")`; t.classList.add("img"); } })).catch(() => {});
     };
+    const tot = D.matchs.length, fin = D.matchs.filter((m) => m.etat === "termine").length, cours = D.matchs.filter((m) => EN_COURS.includes(m.etat)).length;
     view.innerHTML = `
-      <div class="co-head"><div><h1>${T("Videos", "Vidéos")}</h1><p>${T("All your matches and where each analysis stands.", "Tous vos matchs et où en est chaque analyse.")}</p></div>
+      <div class="co-head"><div><h1>${T("Videos", "Vidéos")}</h1><p>${T("All your matches and where each analysis stands. Hover a match to unfold it.", "Tous vos matchs et où en est chaque analyse. Passez la souris sur un match pour le déplier.")}</p></div>
+        <dl class="kv"><div><dt>${T("Matches", "Matchs")}</dt><dd>${tot}</dd></div><div><dt>${T("In progress", "En cours")}</dt><dd>${cours}</dd></div><div><dt>${T("Analysed", "Analysés")}</dt><dd>${fin}</dd></div></dl>
         <div class="actions"><a class="btn btn-ink" href="#/nouveau">${T("+ New video", "+ Nouvelle vidéo")}</a></div></div>
       <div class="toolbar">
-        <div class="chips" role="group">${Object.keys(F).map((k) => `<button type="button" data-f="${k}">${noms[k]}<span class="c">${D.matchs.filter(F[k]).length}</span></button>`).join("")}</div>
+        <div class="seg" role="group">${Object.keys(F).map((k) => `<button type="button" data-f="${k}">${noms[k]}<span class="c">${D.matchs.filter(F[k]).length}</span></button>`).join("")}</div>
         <label class="search">${ICON.search}<input id="q" type="search" placeholder="${T("Search a match", "Chercher un match")}" value="${esc(recherche)}"></label>
       </div>
-      <div class="mlist" id="liste"></div>`;
-    view.querySelectorAll(".chips button").forEach((b) => b.addEventListener("click", () => { filtre = b.dataset.f; draw(); }));
+      <div id="liste"></div>`;
+    view.querySelectorAll(".seg button").forEach((b) => b.addEventListener("click", () => { filtre = b.dataset.f; draw(); }));
     $("q").addEventListener("input", (e) => { recherche = e.target.value; draw(); });
     draw();
   }
@@ -625,48 +701,22 @@
   }
 
   // ================================================================ COMMENT ÇA MARCHE (tutoriel)
+  let arreterTuto = null;
   function tutoView() {
     try { localStorage.setItem("ciprio-tuto-vu", "1"); } catch {}
-    const E = [
-      { t: T("Create your team and register your players", "Créez votre équipe et inscrivez vos joueurs"), qui: T("You · 10 min, once", "Vous · 10 min, une seule fois"),
-        l: [T("Go to “Your team”, give it a name, its category and its shirt colours.", "Allez dans « Votre équipe », donnez-lui un nom, sa catégorie et ses couleurs de maillot."),
-          T("Register each player with his shirt number and his positions.", "Inscrivez chaque joueur avec son numéro de maillot et ses postes."),
-          T("The numbers let Ciprio recognise your players on the video.", "Les numéros permettent à Ciprio de reconnaître vos joueurs sur la vidéo.")], a: ["#/equipe", T("Your team", "Votre équipe")] },
-      { t: T("Write your game plan", "Écrivez votre plan de jeu"), qui: T("You · 5 min per match", "Vous · 5 min par match"),
-        l: [T("In “Game plans”, choose your system and place your registered players in the line-up.", "Dans « Plans de jeu », choisissez votre système et placez vos joueurs inscrits dans la composition."),
-          T("Write your team instructions: pressing, block, build-up… one action per line.", "Écrivez vos consignes collectives : pressing, bloc, relance… une action par ligne."),
-          T("Give each instruction a target Ciprio can measure (time, distance, zone).", "Donnez à chaque consigne un objectif que Ciprio peut mesurer (temps, distance, zone)."),
-          T("Add individual instructions for the players who need them.", "Ajoutez des consignes individuelles aux joueurs qui en ont besoin.")], a: ["#/plan/nouveau", T("Write a plan", "Écrire un plan")] },
-      { t: T("Film the whole match", "Filmez le match entier"), qui: T("You · on match day", "Vous · le jour du match"),
-        l: [T("A fixed camera, high up, at the halfway line, seeing both goals (Veo or similar).", "Une caméra fixe, en hauteur, au niveau de la médiane, qui voit les deux buts (Veo ou équivalent)."),
-          T("From the kick-off to the final whistle, without moving the camera.", "Du coup d'envoi au coup de sifflet final, sans déplacer la caméra.")], a: ["#/aide", T("Filming tips", "Conseils de tournage")] },
-      { t: T("Send the video", "Envoyez la vidéo"), qui: T("You · 2 min", "Vous · 2 min"),
-        l: [T("Click “New video”: opponent, date, shirt colours, game plan of the match.", "Cliquez sur « Nouvelle vidéo » : adversaire, date, couleurs des maillots, plan de jeu du match."),
-          T("Paste the Veo share link (file upload is coming).", "Collez le lien de partage Veo (l'envoi du fichier arrive bientôt)."),
-          T("The match appears in “Videos” with its progress bar.", "Le match apparaît dans « Vidéos » avec sa barre d'avancement.")], a: ["#/nouveau", T("New video", "Nouvelle vidéo")] },
-      { t: T("Ciprio prepares the match", "Ciprio prépare le match"), qui: T("Ciprio · automatic", "Ciprio · automatique"),
-        l: [T("Ciprio watches the video and chooses a few images where the pitch markings are clear.", "Ciprio regarde la vidéo et choisit quelques images où les marquages du terrain sont nets."),
-          T("The bar at the top of the screen shows where it stands. Nothing to do.", "La barre en haut de l'écran montre où il en est. Rien à faire.")] },
-      { t: T("Set up the pitch", "Réglez le terrain"), qui: T("You · about 5 min", "Vous · environ 5 min"),
-        l: [T("When it's your turn, a green banner appears: click “Set up the pitch”.", "Quand c'est votre tour, un bandeau vert apparaît : cliquez sur « Régler le terrain »."),
-          T("On each image, click exactly on the markings asked (corners, boxes, centre circle…).", "Sur chaque image, cliquez exactement sur les repères demandés (coins, surfaces, rond central…)."),
-          T("Can't see a marking? Say so: Ciprio calculates it and shows it in orange. Drag it if it's off.", "Vous ne voyez pas un repère ? Dites-le : Ciprio le calcule et le montre en orange. Faites-le glisser s'il est à côté."),
-          T("Your clicks are the reference of the whole analysis: Ciprio never moves them.", "Vos clics sont la référence de toute l'analyse : Ciprio ne les déplace jamais.")] },
-      { t: T("Ciprio follows the whole match", "Ciprio suit tout le match"), qui: T("Ciprio · automatic", "Ciprio · automatique"),
-        l: [T("The pitch is followed image by image, then players, ball and team shape.", "Le terrain est suivi image par image, puis les joueurs, le ballon et le bloc."),
-          T("A quality check is run before anything reaches you.", "Un contrôle qualité est fait avant que quoi que ce soit vous parvienne.")] },
-      { t: T("Read the report", "Lisez le rapport"), qui: T("You", "Vous"),
-        l: [T("Each instruction of your game plan, measured over the whole match.", "Chaque consigne de votre plan de jeu, mesurée sur tout le match."),
-          T("Team and player by player, with the key video moments to show in the debrief.", "Pour l'équipe et joueur par joueur, avec les moments vidéo clés à montrer au débrief.")], a: ["#/rapports", T("Reports", "Rapports")] },
-    ];
-    view.innerHTML = `<div class="tuto-hero"><span class="k">${T("Tutorial", "Tutoriel")}</span><h1>${T("How Ciprio works", "Comment fonctionne Ciprio")}</h1>
-        <p>${T("Eight steps, from your squad to the report. You do four of them; Ciprio does the rest.", "Huit étapes, de votre effectif au rapport. Vous en faites quatre ; Ciprio fait le reste.")}</p>
-        <div class="tally"><div><b>8</b><span>${T("steps", "étapes")}</span></div><div><b>~20 min</b><span>${T("of your time", "de votre temps")}</span></div><div><b>5 min</b><span>${T("per match", "par match")}</span></div></div></div>
-      <ol class="tl">${E.map((e, k) => `<li class="${/Ciprio ·/.test(e.qui) ? "auto" : ""}"><span class="n">${String(k + 1).padStart(2, "0")}</span><div class="co-card"><div class="tl-h"><h2>${e.t}</h2><span class="who">${e.qui}</span></div>
-        <ul>${e.l.map((x) => `<li>${x}</li>`).join("")}</ul>${e.a ? `<a class="btn btn-line btn-sm" href="${e.a[0]}">${e.a[1]} →</a>` : ""}</div></li>`).join("")}</ol>
-      <div class="co-card" style="margin-top:22px"><h2>${T("The stages of an analysis", "Les étapes d'une analyse")}</h2><p class="sub">${T("What you see on each match, in the top bar and in “Videos”.", "Ce que vous voyez sur chaque match, dans la barre du haut et dans « Vidéos ».")}</p>
-        <div class="legend">${ETATS.map((e) => `<span class="pill ${pillClass(e.k)}">${esc(T(e.en, e.fr))}</span>`).join("")}</div></div>
-      <div class="callout tuto-end" style="margin-top:18px"><p><b>${T("Ready?", "Prêt ?")}</b> ${T("Start with your team: it takes ten minutes, once.", "Commencez par votre équipe : dix minutes, une seule fois.")}</p><a class="btn btn-ink btn-sm" href="${D.equipe ? "#/nouveau" : "#/equipe"}">${D.equipe ? T("Send a video →", "Envoyer une vidéo →") : T("Create my team →", "Créer mon équipe →")}</a></div>`;
+    const n = window.CIPRIO_TUTO ? CIPRIO_TUTO.nombre() : 7;
+    view.innerHTML = `<div class="co-head tuto-head"><div><span class="label violet">${T("Guide", "Guide")}</span><h1>${T("How Ciprio works", "Comment fonctionne Ciprio")}</h1>
+        <p>${T(`${n} steps, from your squad to the report. Watch each one, then do it.`, `${n} étapes, de votre effectif au rapport. Regardez chacune, puis faites-la.`)}</p></div>
+        <dl class="kv"><div><dt>${T("Your time", "Votre temps")}</dt><dd>~20 min</dd></div><div><dt>${T("Per match", "Par match")}</dt><dd>5 min</dd></div><div><dt>${T("Ciprio", "Ciprio")}</dt><dd>${T("the rest", "le reste")}</dd></div></dl></div>
+      <div class="tu" id="tu"></div>
+      <div class="split" style="margin-top:28px">
+        <div class="co-card"><div class="card-h"><div><span class="label">${T("Reference", "Repère")}</span><h2>${T("The stages of an analysis", "Les étapes d'une analyse")}</h2></div></div>
+          <p class="sub" style="margin-top:-6px">${T("What you see on each match, in the top bar and in “Videos”.", "Ce que vous voyez sur chaque match, dans la barre du haut et dans « Vidéos ».")}</p>
+          <div class="legend" style="margin-top:14px">${ETATS.map((e) => `<span class="pill ${pillClass(e.k)}">${esc(T(e.en, e.fr))}</span>`).join("")}</div></div>
+        <div class="callout tuto-end"><p><b>${T("Ready?", "Prêt ?")}</b> ${T("Start with your team: it takes ten minutes, once.", "Commencez par votre équipe : dix minutes, une seule fois.")}</p><a class="btn btn-ink btn-sm" href="${D.equipe ? "#/nouveau" : "#/equipe"}">${D.equipe ? T("Send a video →", "Envoyer une vidéo →") : T("Create my team →", "Créer mon équipe →")}</a></div>
+      </div>`;
+    if (arreterTuto) arreterTuto();
+    if (window.CIPRIO_TUTO) arreterTuto = CIPRIO_TUTO.monter($("tu"));
   }
 
   // ================================================================ RAPPORTS
