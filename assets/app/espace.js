@@ -58,11 +58,23 @@
     });
     return out;
   }
-  // compo = [joueur_id | null] par place (0 = gardien) : numéro dans le rond, nom dessous
-  const pitchSVG = (sys, compo) => `<div class="pitch${compo ? " big" : ""}" aria-label="${esc(sys || "")}"><span class="ring"></span>${placement(sys).map(([x, y], k) => {
-    const j = compo && compo[k] ? D.joueurs.find((x) => x.id === compo[k]) : null;
-    return `<i style="left:${x}%;top:${y}%">${j && j.numero != null ? j.numero : ""}</i>${j ? `<em style="left:${x}%;top:${y}%">${esc(j.nom)}</em>` : ""}`;
-  }).join("")}</div>`;
+  // terrain vu de dessus, but de l'équipe en bas ; compo = [joueur_id | null] par place (0 = gardien)
+  function pitchSVG(sys, compo, sombre) {
+    const W = 68, H = 105, m = 3, X = (x) => m + (x / 100) * W, Y = (y) => m + (y / 100) * H;
+    const stripes = Array.from({ length: 7 }, (_, k) => k % 2 ? `<rect class="stripe" x="${m}" y="${m + (k * H) / 7}" width="${W}" height="${H / 7}"/>` : "").join("");
+    const box = (top) => { const y0 = top ? m : m + H - 16.5, y1 = top ? m : m + H - 5.5;
+      return `<rect class="ln" x="${m + W / 2 - 20.16}" y="${y0}" width="40.32" height="16.5"/><rect class="ln" x="${m + W / 2 - 9.16}" y="${y1}" width="18.32" height="5.5"/>
+        <path class="ln" d="M${m + W / 2 - 7.3} ${top ? m + 16.5 : m + H - 16.5} A9.15 9.15 0 0 ${top ? 0 : 1} ${m + W / 2 + 7.3} ${top ? m + 16.5 : m + H - 16.5}"/>`; };
+    const pl = placement(sys).map(([x, y], k) => {
+      const j = compo && compo[k] ? D.joueurs.find((q) => q.id === compo[k]) : null;
+      return `<g class="pl${k === 0 ? " gk" : ""}"><circle cx="${X(x)}" cy="${Y(y)}" r="2.9"/>${j && j.numero != null ? `<text x="${X(x)}" y="${Y(y)}">${j.numero}</text>` : ""}${j ? `<text class="nm" x="${X(x)}" y="${Y(y) + 5.2}">${esc(j.nom).slice(0, 12)}</text>` : ""}</g>`;
+    }).join("");
+    return `<svg class="pitch-svg${compo ? " big" : ""}" viewBox="0 0 ${W + 2 * m} ${H + 2 * m}" role="img" aria-label="${esc(sys || "")}">
+      <rect class="turf" x="0" y="0" width="${W + 2 * m}" height="${H + 2 * m}" rx="3"/>${stripes}
+      <rect class="ln" x="${m}" y="${m}" width="${W}" height="${H}"/><line class="ln" x1="${m}" y1="${m + H / 2}" x2="${m + W}" y2="${m + H / 2}"/>
+      <circle class="ln" cx="${m + W / 2}" cy="${m + H / 2}" r="9.15"/><circle cx="${m + W / 2}" cy="${m + H / 2}" r=".5" fill="rgba(255,255,255,.7)"/>
+      ${box(true)}${box(false)}${pl}</svg>`;
+  }
   // nom de chaque place d'un système : Gardien, Défenseur 1…, Milieu 1…, Attaquant 1…
   function places(sys) {
     const rows = String(sys || "4-3-3").split("-").map(Number).filter(Boolean);
@@ -109,9 +121,15 @@
   };
 
   // ================================================================ CONNEXION
+  const authSide = () => `<aside class="auth-side"><span class="label">Ciprio · ${T("Coach space", "Espace coach")}</span>
+      <h2>${T("Your game plan,", "Votre plan de jeu,")} <span>${T("measured on the pitch.", "mesuré sur le terrain.")}</span></h2>
+      <ul><li><b>01</b><span>${T("Send the video of your match.", "Envoyez la vidéo de votre match.")}</span></li>
+        <li><b>02</b><span>${T("Set up the pitch in five minutes.", "Réglez le terrain en cinq minutes.")}</span></li>
+        <li><b>03</b><span>${T("Read how each instruction was followed.", "Lisez comment chaque consigne a été suivie.")}</span></li></ul>
+      <div class="mini-pitch">${pitchSVG("4-3-3", null, true)}</div></aside>`;
   function authView(tab = "login") {
     view.innerHTML = `
-      <div class="co-auth co-card">
+      <div class="auth-wrap">${authSide()}<div class="co-auth">
         <h1>${T("Your Ciprio space", "Votre espace Ciprio")}</h1>
         <p class="muted">${T("Send your matches, set up the pitch, follow each analysis.", "Envoyez vos matchs, réglez le terrain, suivez chaque analyse.")}</p>
         <div class="co-tabs" role="tablist">
@@ -131,7 +149,7 @@
           </div>
           <p class="form-msg" id="m" role="status"></p>
         </form>
-      </div>`;
+      </div></div>`;
     view.querySelectorAll(".co-tabs button").forEach((b) => b.addEventListener("click", () => authView(b.dataset.t)));
     oeils();
     const m = $("m");
@@ -168,7 +186,7 @@
   function codeView(note) {
     const rec = codeCtx.type === "recovery";
     view.innerHTML = `
-      <div class="co-auth co-card">
+      <div class="auth-wrap">${authSide()}<div class="co-auth">
         <h1>${T("Check your e-mails", "Regardez vos e-mails")}</h1>
         <p class="muted">${note ? esc(note) + " " : ""}${T("We sent a security code to", "Nous avons envoyé un code de sécurité à")} <b>${esc(codeCtx.email)}</b>. ${T("Type it below.", "Tapez-le ci-dessous.")}</p>
         <form id="f" novalidate>
@@ -182,7 +200,7 @@
           </div>
           <p class="form-msg" id="m" role="status"></p>
         </form>
-      </div>`;
+      </div></div>`;
     const m = $("m");
     oeils();
     $("code").focus();
@@ -212,7 +230,7 @@
 
   function forgotView(email0 = "") {
     view.innerHTML = `
-      <div class="co-auth co-card">
+      <div class="auth-wrap">${authSide()}<div class="co-auth">
         <h1>${T("Forgot your password?", "Mot de passe oublié ?")}</h1>
         <p class="muted">${T("Type your e-mail: you'll receive a security code to choose a new password.", "Indiquez votre e-mail : vous recevrez un code de sécurité pour choisir un nouveau mot de passe.")}</p>
         <form id="f" novalidate>
@@ -220,7 +238,7 @@
           <div class="co-actions"><button class="btn btn-ink" type="submit">${T("Receive a code →", "Recevoir un code →")}</button><button class="linkbtn" type="button" id="retour">${T("Back", "Retour")}</button></div>
           <p class="form-msg" id="m" role="status"></p>
         </form>
-      </div>`;
+      </div></div>`;
     $("retour").addEventListener("click", () => authView("login"));
     $("f").addEventListener("submit", async (ev) => {
       ev.preventDefault();
@@ -276,9 +294,10 @@
     if (!session || !D) { el.hidden = true; return; }
     el.hidden = false;
     const m = D.matchs.filter((x) => EN_COURS.includes(x.etat)).sort((a, b) => new Date(b.maj_le) - new Date(a.maj_le))[0];
-    if (!m) { el.className = "co-prog idle"; el.href = "#/videos"; el.innerHTML = `<div class="t">${T("No task in progress", "Aucune tâche en cours")}</div>`; return; }
+    if (!m) { el.className = "co-prog idle"; el.href = "#/videos"; el.innerHTML = `<span class="live"><i></i>${T("Idle", "Au calme")}</span><span>${T("No analysis in progress", "Aucune analyse en cours")}</span>`; return; }
     el.className = "co-prog"; el.href = "#/match/" + m.id;
-    el.innerHTML = `<div class="t"><b><span class="k">${T("In progress", "En cours")}</span>${esc(m.titre)}</b><span>${esc(etatNom(m.etat))} · ${pct(m.etat)} %</span></div><div class="bar"><i style="width:${pct(m.etat)}%"></i></div>`;
+    el.innerHTML = `<span class="live"><i></i>${m.etat === "a_pointer" ? T("Your turn", "À vous") : T("Live", "En cours")}</span>
+      <span class="mid"><b>${esc(m.titre)} · <span class="muted" style="font-weight:500">${esc(etatNom(m.etat))}</span></b><span class="bar"><i style="width:${pct(m.etat)}%"></i></span></span><span class="pct">${pct(m.etat)} %</span>`;
   }
   setInterval(async () => { if (session && D && D.matchs.some((x) => EN_COURS.includes(x.etat))) { await charger(); majProgression(); } }, 30000);
 
@@ -297,7 +316,8 @@
       <span class="spacer"></span>
       <a href="#/aide"${cur("/aide")}>${ICON.help}${T("Help", "Aide")}</a>
       <a href="#/parametres"${cur("/parametres")}>${ICON.gear}${T("Settings", "Paramètres")}</a>
-      <div class="me"><span class="avatar">${esc(initiales())}</span><div><b>${esc(D.profil.nom || T("My account", "Mon compte"))}</b><span>${esc(session.user.email)}</span></div></div>`;
+      <a class="me" href="#/parametres"><span class="avatar">${esc(initiales())}</span><div><b>${esc(D.profil.nom || T("My account", "Mon compte"))}</b><span>${esc(session.user.email)}</span></div></a>
+      <span class="ver">${T("Test access · free", "Accès test · gratuit")}</span>`;
     $("avatar").textContent = initiales();
     $("avatar").hidden = false;
   }
@@ -319,25 +339,39 @@
       [M.some((x) => ["pointage_fini", "calcul", "controle", "termine"].includes(x.etat)), T("Set up the pitch of a match", "Réglez le terrain d'un match"), "#/videos"],
     ];
     const faits = etapes.filter((e) => e[0]).length;
+    const cur = aPointer[0] || M.filter((x) => EN_COURS.includes(x.etat)).sort((a, b) => new Date(b.maj_le) - new Date(a.maj_le))[0];
+    const iCur = cur ? ETATS.findIndex((x) => x.k === cur.etat) : -1;
+    const planCur = cur && cur.plan && cur.plan.systeme ? cur.plan : null;
+    const board = cur ? `<div class="board">
+        <div class="board-bar"><span class="live"><i></i>${cur.etat === "a_pointer" ? T("Your turn", "À vous") : T("In progress", "En cours")}</span><span><b>${esc(cur.titre)}</b>${score(cur) ? " · " + esc(score(cur)) : ""}</span><span>${pct(cur.etat)} %</span></div>
+        <div class="board-grid"><div class="board-pitch">${pitchSVG((planCur && planCur.systeme) || (D.equipe && D.equipe.systeme) || "4-3-3", planCur && planCur.composition && planCur.composition.length ? planCur.composition : null)}</div>
+          <div class="board-info"><div><span class="label">${esc([fmtDate(cur.date_match, { day: "numeric", month: "short" }), cur.competition].filter(Boolean).join(" · ") || T("Current match", "Match en cours"))}</span><h3>${esc(etatNom(cur.etat))}</h3></div>
+            <ul class="board-steps">${ETATS.slice(1).map((e, j) => `<li class="${j + 1 < iCur ? "on" : j + 1 === iCur ? "now" : ""}"><i></i>${esc(T(e.en, e.fr))}</li>`).join("")}</ul>
+            ${cur.etat === "a_pointer" ? `<a class="btn btn-accent btn-sm" href="/app/pointage?match=${cur.id}">${T("Set up the pitch →", "Régler le terrain →")}</a>` : `<a class="btn btn-line btn-sm" style="color:#e9eeeb;border-color:var(--dark-line)" href="#/match/${cur.id}">${T("Open the match →", "Ouvrir le match →")}</a>`}</div></div></div>`
+      : `<div class="board"><div class="board-bar"><span class="live" style="color:var(--dark-muted)"><i style="background:var(--dark-muted);animation:none"></i>${T("Idle", "Au calme")}</span><span>${T("No analysis in progress", "Aucune analyse en cours")}</span><span></span></div>
+        <div class="board-grid"><div class="board-pitch">${pitchSVG((D.equipe && D.equipe.systeme) || "4-3-3", null)}</div>
+          <div class="board-empty"><span class="label" style="color:var(--dark-muted)">${T("Next step", "Prochaine étape")}</span><h3>${T("Send your next match", "Envoyez votre prochain match")}</h3>
+            <p>${T("Ciprio measures your game plan over the whole match, for the team and each player.", "Ciprio mesure votre plan de jeu sur tout le match, pour l'équipe et chaque joueur.")}</p>
+            <a class="btn btn-accent btn-sm" style="justify-self:start" href="#/nouveau">${T("+ New video", "+ Nouvelle vidéo")}</a></div></div></div>`;
+    const spark = (n) => `<span class="spark" aria-hidden="true">${Array.from({ length: 6 }, (_, k) => `<i class="${k < n ? "on" : ""}" style="height:${6 + ((k * 7) % 16)}px"></i>`).join("")}</span>`;
     view.innerHTML = `
-      <div class="welcome">
-        <div><span class="label">${esc(fmtDate(new Date(), { weekday: "long", day: "numeric", month: "long" }))}</span>
-          <h1>${nom ? `${salut}, ${esc(nom.split(" ")[0])}` : T("Welcome", "Bienvenue")}</h1>
-          <p class="muted" style="margin-top:6px">${D.equipe ? esc([D.equipe.nom, D.equipe.club].filter(Boolean).join(" · ")) : T("Your match analysis space.", "Votre espace d'analyse de matchs.")}</p></div>
-        <a class="btn btn-ink" href="#/nouveau">${T("+ New video", "+ Nouvelle vidéo")}</a>
+      <div class="hero-home">
+        <div class="co-card hello"><div><span class="label">${esc(fmtDate(new Date(), { weekday: "long", day: "numeric", month: "long" }))}</span>
+            <h1>${nom ? `${salut},<br><span>${esc(nom.split(" ")[0])}.</span>` : T("Welcome.", "Bienvenue.")}</h1></div>
+          <p>${D.equipe ? esc([D.equipe.nom, D.equipe.club, D.equipe.categorie].filter(Boolean).join(" · ")) : T("Create your team to get started.", "Créez votre équipe pour commencer.")}${aPointer.length ? `<br><b style="color:var(--accent)">${aPointer.length > 1 ? T(`${aPointer.length} matches are waiting for you.`, `${aPointer.length} matchs vous attendent.`) : T("A match is waiting for your pointing.", "Un match attend votre pointage.")}</b>` : ""}</p>
+          <div class="ctas"><a class="btn btn-ink btn-sm" href="#/nouveau">${T("+ New video", "+ Nouvelle vidéo")}</a><a class="btn btn-line btn-sm" href="#/plans">${T("Game plans", "Plans de jeu")}</a></div></div>
+        ${board}
       </div>
-      ${aPointer.length ? `<div class="callout" style="margin-bottom:18px"><p><b>${T("Your turn:", "À vous :")}</b> ${aPointer.length > 1 ? T(`${aPointer.length} matches are waiting for you to set up the pitch.`, `${aPointer.length} matchs attendent que vous régliez le terrain.`) : T(`set up the pitch of “${esc(aPointer[0].titre)}”. About 5 minutes.`, `réglez le terrain de « ${esc(aPointer[0].titre)} ». Environ 5 minutes.`)}</p>
-        <a class="btn btn-ink btn-sm" href="${aPointer.length > 1 ? "#/videos" : "/app/pointage?match=" + aPointer[0].id}">${T("Set up the pitch →", "Régler le terrain →")}</a></div>` : ""}
-      <div class="grid g4" style="margin-bottom:18px">
-        <a class="co-card kpi" href="#/videos/tous"><span class="k">${T("Videos", "Vidéos")}</span><b>${M.length}</b><small>${T("sent to Ciprio", "envoyées à Ciprio")}</small><span class="go">→</span></a>
-        <a class="co-card kpi" href="#/videos/${aPointer.length ? "pour_vous" : "en_cours"}"><span class="k">${T("In progress", "En cours")}</span><b>${enCours.length + aPointer.length}</b><small>${aPointer.length ? T(`${aPointer.length} waiting for you`, `dont ${aPointer.length} pour vous`) : T("being analysed", "en analyse")}</small><span class="go">→</span></a>
-        <a class="co-card kpi" href="#/rapports"><span class="k">${T("Reports", "Rapports")}</span><b>${finis.length}</b><small>${T("analyses completed", "analyses terminées")}</small><span class="go">→</span></a>
-        <a class="co-card kpi" href="#/equipe"><span class="k">${T("Squad", "Effectif")}</span><b>${D.joueurs.filter((x) => x.actif).length}</b><small>${T("active players", "joueurs actifs")}</small><span class="go">→</span></a>
+      <div class="facts" style="margin-bottom:18px">
+        <a href="#/videos/tous"><span class="k">${T("Videos", "Vidéos")}</span><b>${M.length}</b><small>${T("sent to Ciprio", "envoyées à Ciprio")}</small><span class="go">→</span></a>
+        <a href="#/videos/${aPointer.length ? "pour_vous" : "en_cours"}"><span class="k">${T("In progress", "En cours")}</span><b>${enCours.length + aPointer.length}</b><small>${aPointer.length ? T(`${aPointer.length} waiting for you`, `dont ${aPointer.length} pour vous`) : T("being analysed", "en analyse")}</small><span class="go">→</span></a>
+        <a href="#/rapports"><span class="k">${T("Reports", "Rapports")}</span><b>${finis.length}</b><small>${T("analyses completed", "analyses terminées")}</small><span class="go">→</span>${spark(finis.length)}</a>
+        <a href="#/equipe"><span class="k">${T("Squad", "Effectif")}</span><b>${D.joueurs.filter((x) => x.actif).length}</b><small>${D.joueurs.filter((x) => x.actif && x.statut && x.statut !== "disponible").length ? T(`${D.joueurs.filter((x) => x.actif && x.statut && x.statut !== "disponible").length} unavailable`, `dont ${D.joueurs.filter((x) => x.actif && x.statut && x.statut !== "disponible").length} indisponible(s)`) : T("active players", "joueurs actifs")}</small><span class="go">→</span></a>
       </div>
       <div class="grid g-main">
         <div class="stack">
           <div class="co-card">
-            <div class="toolbar" style="margin-bottom:12px"><h2>${T("Latest videos", "Dernières vidéos")}</h2><a class="linkbtn" href="#/videos">${T("See all", "Tout voir")}</a></div>
+            <div class="card-h"><div><span class="label">${T("Activity", "Activité")}</span><h2>${T("Latest videos", "Dernières vidéos")}</h2></div><a class="btn btn-line btn-sm" href="#/videos">${T("See all", "Tout voir")}</a></div>
             ${M.length ? `<div class="mlist">${M.slice(0, 4).map(mrow).join("")}</div>` : `<div class="empty">${ICON.video}<p>${T("No video yet.", "Aucune vidéo pour l'instant.")}</p><a class="btn btn-ink btn-sm" href="#/nouveau">${T("Send a video", "Envoyer une vidéo")}</a></div>`}
           </div>
           <a class="co-card tuto-card" href="#/tuto"><div><span class="k">${T("New to Ciprio?", "Nouveau sur Ciprio ?")}</span><h2>${T("How it works, step by step", "Comment ça marche, étape par étape")}</h2>
@@ -345,8 +379,7 @@
         </div>
         <div class="stack">
           <div class="co-card">
-            <h2>${T("Getting started", "Pour bien démarrer")}</h2>
-            <p class="sub">${faits} / ${etapes.length} ${T("done", "faites")}</p>
+            <div class="card-h"><div><span class="label">${T("Set-up", "Mise en route")}</span><h2>${T("Getting started", "Pour bien démarrer")}</h2></div><span class="pill ${faits === etapes.length ? "done" : ""}">${faits} / ${etapes.length}</span></div>
             <div class="meter"><i style="width:${Math.round((faits / etapes.length) * 100)}%"></i></div>
             <ul class="check">${etapes.map(([ok, t, h]) => `<li class="${ok ? "ok" : ""}"><a href="${h}"><i>${ok ? "✓" : ""}</i>${esc(t)}</a></li>`).join("")}</ul>
           </div>
@@ -576,8 +609,9 @@
           T("Team and player by player, with the key video moments to show in the debrief.", "Pour l'équipe et joueur par joueur, avec les moments vidéo clés à montrer au débrief.")], a: ["#/rapports", T("Reports", "Rapports")] },
     ];
     view.innerHTML = `<div class="tuto-hero"><span class="k">${T("Tutorial", "Tutoriel")}</span><h1>${T("How Ciprio works", "Comment fonctionne Ciprio")}</h1>
-        <p>${T("Eight steps, from your squad to the report. You do four of them; Ciprio does the rest.", "Huit étapes, de votre effectif au rapport. Vous en faites quatre ; Ciprio fait le reste.")}</p></div>
-      <ol class="tl">${E.map((e, k) => `<li class="${/Ciprio ·/.test(e.qui) ? "auto" : ""}"><span class="n">${k + 1}</span><div class="co-card"><div class="tl-h"><h2>${e.t}</h2><span class="who">${e.qui}</span></div>
+        <p>${T("Eight steps, from your squad to the report. You do four of them; Ciprio does the rest.", "Huit étapes, de votre effectif au rapport. Vous en faites quatre ; Ciprio fait le reste.")}</p>
+        <div class="tally"><div><b>8</b><span>${T("steps", "étapes")}</span></div><div><b>~20 min</b><span>${T("of your time", "de votre temps")}</span></div><div><b>5 min</b><span>${T("per match", "par match")}</span></div></div></div>
+      <ol class="tl">${E.map((e, k) => `<li class="${/Ciprio ·/.test(e.qui) ? "auto" : ""}"><span class="n">${String(k + 1).padStart(2, "0")}</span><div class="co-card"><div class="tl-h"><h2>${e.t}</h2><span class="who">${e.qui}</span></div>
         <ul>${e.l.map((x) => `<li>${x}</li>`).join("")}</ul>${e.a ? `<a class="btn btn-line btn-sm" href="${e.a[0]}">${e.a[1]} →</a>` : ""}</div></li>`).join("")}</ol>
       <div class="co-card" style="margin-top:22px"><h2>${T("The stages of an analysis", "Les étapes d'une analyse")}</h2><p class="sub">${T("What you see on each match, in the top bar and in “Videos”.", "Ce que vous voyez sur chaque match, dans la barre du haut et dans « Vidéos ».")}</p>
         <div class="legend">${ETATS.map((e) => `<span class="pill ${pillClass(e.k)}">${esc(T(e.en, e.fr))}</span>`).join("")}</div></div>
@@ -596,7 +630,7 @@
   function plansView() {
     view.innerHTML = `<div class="co-head"><div><h1>${T("Game plans", "Plans de jeu")}</h1><p>${T("Your pre-match instructions. Attach one to a match: Ciprio measures whether it was followed.", "Vos consignes d'avant-match. Attachez-en un à un match : Ciprio mesure s'il a été respecté.")}</p></div>
         <div class="actions"><a class="btn btn-ink" href="#/plan/nouveau">${T("+ New plan", "+ Nouveau plan")}</a></div></div>
-      ${D.plans.length ? `<div class="grid g3">${D.plans.map((p) => `<a class="co-card plan-card" href="#/plan/${p.id}"><span class="sys">${esc(p.systeme || "—")}</span><h3>${esc(p.nom)}</h3>
+      ${D.plans.length ? `<div class="grid g3">${D.plans.map((p) => `<a class="co-card plan-card" href="#/plan/${p.id}"><span class="top"><span class="sys">${esc(p.systeme || "—")}</span><span class="label">${(p.composition || []).filter(Boolean).length}/11</span></span>${pitchSVG(p.systeme, p.composition && p.composition.some(Boolean) ? p.composition : null)}<h3>${esc(p.nom)}</h3>
           <p class="muted small">${(p.consignes || []).length} ${T("team instructions", "consignes collectives")} · ${(p.individuelles || []).length} ${T("individual", "individuelles")}</p>
           <p class="muted small" style="margin-top:8px">${T("Updated ", "Modifié le ")}${esc(fmtDate(p.maj_le, { day: "numeric", month: "short" }))} · ${D.matchs.filter((m) => m.plan && m.plan.plan_id === p.id).length} ${T("match(es)", "match(s)")}</p></a>`).join("")}</div>`
         : vide(ICON.plan, T("No game plan yet", "Aucun plan de jeu pour l'instant"), T("Write your instructions once (pressing, block, build-up…), then reuse them match after match.", "Écrivez vos consignes une fois (pressing, bloc, relance…), puis réutilisez-les match après match."), `<a class="btn btn-ink btn-sm" href="#/plan/nouveau">${T("Write a plan", "Écrire un plan")}</a>`)}`;
@@ -922,6 +956,23 @@
   }
 
   // ================================================================ NAVIGATION
+  function section(h) {
+    if (h.startsWith("/match/") || h.startsWith("/videos") || h === "/nouveau") return [T("Analysis", "Analyse"), T("Videos", "Vidéos")];
+    if (h === "/rapports") return [T("Analysis", "Analyse"), T("Reports", "Rapports")];
+    if (h.startsWith("/plan")) return [T("Preparation", "Préparation"), T("Game plans", "Plans de jeu")];
+    if (h === "/equipe") return [T("Preparation", "Préparation"), T("Your team", "Votre équipe")];
+    if (h === "/tuto") return [T("Guide", "Guide"), T("How it works", "Comment ça marche")];
+    if (h === "/aide") return [T("Guide", "Guide"), T("Help", "Aide")];
+    if (h.startsWith("/parametres")) return [T("Account", "Compte"), T("Settings", "Paramètres")];
+    return [T("Coach space", "Espace coach"), T("Home", "Accueil")];
+  }
+  // après chaque écran : fil d'Ariane en haut, petite étiquette au-dessus du titre de la page
+  function poserEtiquette(h) {
+    const [a, b] = section(h);
+    $("crumb").innerHTML = `${esc(a)} / <b>${esc(b)}</b>`;
+    setTimeout(() => { const t = view.querySelector(".co-head > div:first-child"); if (t && !t.querySelector(".label") && !t.classList.contains("team-head")) t.insertAdjacentHTML("afterbegin", `<span class="label">${esc(a)}</span>`); });
+  }
+
   async function route() {
     ({ data: { session } } = await sb.auth.getSession());
     $("side").hidden = !session;
@@ -939,6 +990,7 @@
     menu(h);
     majProgression();
     window.scrollTo(0, 0);
+    poserEtiquette(h);
     if (h === "/nouveau") return nouveauView();
     const mv = h.match(/^\/videos(?:\/(tous|pour_vous|en_cours|termines|erreur))?$/);
     if (mv) return videosView(mv[1]);
