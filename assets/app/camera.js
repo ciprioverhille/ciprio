@@ -1,7 +1,7 @@
 /* Vue « caméra Veo » de l'accueil : le même match simulé que la page vitrine (deux blocs qui coulissent ensemble avec
    le ballon, passes, pertes de balle, contre-pressing), filmé de côté et en hauteur par une caméra fixe qui tourne pour
    suivre le ballon (panoramique + inclinaison, jamais de roulis), comme une Veo.
-   Joueurs = petits palets plats posés sur la pelouse (pas de relief) ; seule la caméra donne la perspective.
+   Joueurs = palets épais (un peu de relief), numéro dessus ; tribunes pleines autour du terrain ; aucune ligne de passe.
    CIPRIO_CAMERA.monter(canvas, { mode: "vert" | "blanc", haut: 0.64 }) -> fonction d'arrêt.
    - vert  : une analyse est en cours (pelouse verte, lignes blanches) ;
    - blanc : rien en cours (terrain blanc, lignes grises, joueurs en noir).
@@ -14,8 +14,12 @@
   const NUM = [1, 3, 4, 5, 2, 6, 8, 10, 7, 9, 11];
 
   const COUL = {
-    vert: { fond: "#0c100e", herbe1: "#1d5f34", herbe2: "#1b5830", ligne: "rgba(255,255,255,.78)", a: "#f2f5f3", aTxt: "#0c100e", b: "#3a433e", bTxt: "#e9eeeb", bBord: "rgba(255,255,255,.35)", ballon: "#ffffff", passe: "rgba(255,255,255,.55)", press: "#3ddc84" },
-    blanc: { fond: "#ffffff", herbe1: "#fbfbfa", herbe2: "#f4f5f4", ligne: "rgba(12,16,14,.28)", a: "#0c100e", aTxt: "#ffffff", b: "#ffffff", bTxt: "#0c100e", bBord: "#0c100e", ballon: "#0c100e", passe: "rgba(12,16,14,.45)", press: "#12a150" },
+    vert: { ciel1: "#24323b", ciel2: "#3a4a52", abords: "#174a2a", gradin1: "#4a524e", gradin2: "#424a46", contre: "#2f3633", toit: "#262d2a",
+      public: ["#c9d0cc", "#8b948f", "#b8423f", "#2f6fb5", "#e9eeeb", "#d9a52c", "#5d6661", "#6d4a8f"],
+      herbe1: "#1d5f34", herbe2: "#1b5830", ligne: "rgba(255,255,255,.8)", a: "#f2f5f3", aCote: "#aeb6b1", aTxt: "#0c100e", b: "#2f3733", bCote: "#151a17", bTxt: "#e9eeeb", bBord: null, ballon: "#ffffff", ombre: "rgba(0,0,0,.3)" },
+    blanc: { ciel1: "#ffffff", ciel2: "#f6f7f6", abords: "#f1f3f2", gradin1: "#e9ecea", gradin2: "#e2e6e4", contre: "#d5dad7", toit: "#cfd5d2",
+      public: ["#b9c0bc", "#9aa29e", "#cfd5d2", "#7e8682", "#c4cac7"],
+      herbe1: "#fbfbfa", herbe2: "#f4f5f4", ligne: "rgba(12,16,14,.3)", a: "#0c100e", aCote: "#3a403d", aTxt: "#ffffff", b: "#ffffff", bCote: "#d0d5d2", bTxt: "#0c100e", bBord: "#0c100e", ballon: "#ffffff", ombre: "rgba(12,16,14,.14)" },
   };
 
   const rnd = (a, b) => a + Math.random() * (b - a);
@@ -154,45 +158,83 @@
         if (a && b && a2 && b2) { ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a2[0], a2[1]); ctx.lineTo(b2[0], b2[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); }
       }
     }
-    // palet plat : un disque posé au sol, projeté (donc aplati par la perspective)
-    function palet(x, y, r, fond, bord, num, encre) {
+    // ---------------------------------------------------------------- tribunes (fond, bouts) : plus aucun noir autour du terrain
+    const RANGS = 9, PROF = 3.1, MONTE = 1.9, RECUL = 6;          // gradins : profondeur et hauteur par rang, recul derrière les lignes
+    const TRIB = [
+      { axe: "x", de: -34, a: L + 34, pos: (u, r) => [u, -RECUL - r * PROF, r * MONTE] },                 // en face, derrière la touche éloignée
+      { axe: "y", de: -26, a: W + 24, pos: (u, r) => [-RECUL - r * PROF, u, r * MONTE] },                 // derrière le but de gauche
+      { axe: "y", de: -26, a: W + 24, pos: (u, r) => [L + RECUL + r * PROF, u, r * MONTE] },              // derrière le but de droite
+    ];
+    const PUBLIC = [];
+    TRIB.forEach((t, k) => { for (let r = 0; r < RANGS; r++) for (let u = t.de; u < t.a; u += 0.85) if (Math.random() < 0.72) PUBLIC.push({ k, u: u + Math.random() * 0.3, r: r + 0.5, c: Math.floor(Math.random() * C.public.length) }); });
+    function quad(a, b, c2, d) { if (!a || !b || !c2 || !d) return false; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.lineTo(c2[0], c2[1]); ctx.lineTo(d[0], d[1]); ctx.closePath(); return true; }
+    function tribunes() {
+      // ciel / toit
+      const g = ctx.createLinearGradient(0, 0, 0, h * 0.6); g.addColorStop(0, C.ciel1); g.addColorStop(1, C.ciel2);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, w, h);
+      // sol autour du terrain (piste, abords)
+      if (quad(proj(-RECUL, -RECUL, 0), proj(L + RECUL, -RECUL, 0), proj(L + RECUL, W + 26, 0), proj(-RECUL, W + 26, 0))) { ctx.fillStyle = C.abords; ctx.fill(); }
+      TRIB.forEach((t, k) => {
+        const N = 14;
+        for (let r = 0; r < RANGS; r++) for (let i = 0; i < N; i++) {
+          const u0 = t.de + ((t.a - t.de) * i) / N, u1 = t.de + ((t.a - t.de) * (i + 1)) / N;
+          const P = (u, rr) => { const q = t.pos(u, rr); return proj(q[0], q[1], q[2]); };
+          // contremarche (face verticale) puis assise
+          if (quad(P(u0, r), P(u1, r), (() => { const q = t.pos(u1, r); return proj(q[0], q[1], q[2] + MONTE); })(), (() => { const q = t.pos(u0, r); return proj(q[0], q[1], q[2] + MONTE); })())) { ctx.fillStyle = C.contre; ctx.fill(); }
+          const a = t.pos(u0, r), b = t.pos(u1, r), c2 = t.pos(u1, r + 1), d = t.pos(u0, r + 1);
+          if (quad(proj(a[0], a[1], a[2] + MONTE), proj(b[0], b[1], b[2] + MONTE), proj(c2[0], c2[1], c2[2]), proj(d[0], d[1], d[2]))) { ctx.fillStyle = r % 2 ? C.gradin1 : C.gradin2; ctx.fill(); }
+        }
+        // toit au-dessus du dernier rang
+        const ha = RANGS * MONTE + 4.5, a = t.pos(t.de, RANGS), b = t.pos(t.a, RANGS);
+        if (quad(proj(a[0], a[1], RANGS * MONTE), proj(b[0], b[1], RANGS * MONTE), proj(b[0], b[1], ha), proj(a[0], a[1], ha))) { ctx.fillStyle = C.toit; ctx.fill(); }
+      });
+      // spectateurs
+      const F = (w / 2) / Math.tan((70 * Math.PI) / 360) * cam.f;
+      for (const s of PUBLIC) {
+        const q = TRIB[s.k].pos(s.u, s.r), p = proj(q[0], q[1], q[2] + MONTE * 0.5 + 0.6);
+        if (!p || p[0] < -4 || p[0] > w + 4 || p[1] < -4 || p[1] > h) continue;
+        const z = Math.max(1, Math.min(3.2, (F * 0.42) / p[2]));
+        ctx.fillStyle = C.public[s.c]; ctx.fillRect(p[0] - z / 2, p[1] - z, z, z * 1.5);
+      }
+    }
+
+    // ---------------------------------------------------------------- joueurs : palets épais (un peu de relief), numéro dessus
+    function palet(x, y, r, haut, dessus, cote, bord, num, encre) {
       const c = proj(x, y, 0); if (!c) return;
       const e = 0.4, gx = proj(x + e, y, 0), gy = proj(x, y + e, 0);
       if (!gx || !gy) return;
       const plat = Math.max(0.35, Math.min(1, Math.abs(gy[1] - c[1]) / Math.max(0.01, Math.hypot(gx[0] - c[0], gx[1] - c[1]))));
-      const rx = Math.max(3.6, Math.min(r * 9.5, (r * 0.9 * (w / 2)) / c[2])) * Math.min(1.3, Math.max(0.7, w / 1300));
-      ctx.beginPath(); ctx.ellipse(c[0], c[1], rx, rx * plat, 0, 0, Math.PI * 2);
-      ctx.fillStyle = fond; ctx.fill();
+      const rx = Math.max(5, Math.min(r * 13, (r * 1.45 * (w / 2)) / c[2])) * Math.min(1.3, Math.max(0.7, w / 1300)), ry = rx * plat;
+      const ep = Math.max(rx * haut, 2);                        // épaisseur visible du palet
+      ctx.fillStyle = C.ombre; ctx.beginPath(); ctx.ellipse(c[0] + rx * 0.25, c[1] + ry * 0.2, rx * 1.12, ry * 1.12, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(c[0], c[1], rx, ry, 0, 0, Math.PI); ctx.lineTo(c[0] - rx, c[1] - ep); ctx.ellipse(c[0], c[1] - ep, rx, ry, 0, Math.PI, 0, true); ctx.closePath();
+      ctx.fillStyle = cote; ctx.fill(); if (bord) { ctx.strokeStyle = bord; ctx.lineWidth = 1; ctx.stroke(); }
+      ctx.beginPath(); ctx.ellipse(c[0], c[1] - ep, rx, ry, 0, 0, Math.PI * 2); ctx.fillStyle = dessus; ctx.fill();
       if (bord) { ctx.strokeStyle = bord; ctx.lineWidth = 1; ctx.stroke(); }
       if (num != null && rx > 7) {
         ctx.fillStyle = encre; ctx.font = `600 ${Math.round(rx * 0.95)}px "Geist Mono", ui-monospace, monospace`;
         ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.save(); ctx.translate(c[0], c[1]); ctx.scale(1, Math.max(0.6, plat)); ctx.fillText(String(num), 0, 1); ctx.restore();
+        ctx.save(); ctx.translate(c[0], c[1] - ep); ctx.scale(1, Math.max(0.6, plat)); ctx.fillText(String(num), 0, 1); ctx.restore();
       }
     }
     function joueurs() {
-      if (ballon.k < 1) {                           // ligne de la passe en cours
-        const a = proj(ballon.fx, ballon.fy, 0), b = proj(ballon.tx, ballon.ty, 0);
-        if (a && b) { ctx.save(); ctx.setLineDash([4, 4]); ctx.strokeStyle = C.passe; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(b[0], b[1]); ctx.stroke(); ctx.restore(); }
-      }
-      if (press) {                                  // contre-pressing : trois traits vers le ballon
-        const def = ballon.team === "a" ? B : A, pb = proj(ballon.x, ballon.y, 0);
-        ctx.strokeStyle = C.press; ctx.lineWidth = 1.5; ctx.globalAlpha = 0.85;
-        for (const o of proches(def, ballon.x, ballon.y, 3)) { const q = proj(o.p.x, o.p.y, 0); if (q && pb) { ctx.beginPath(); ctx.moveTo(q[0], q[1]); ctx.lineTo(pb[0], pb[1]); ctx.stroke(); } }
-        ctx.globalAlpha = 1;
-      }
       const tous = A.map((p) => ({ p, a: true })).concat(B.map((p) => ({ p, a: false })));
       tous.sort((u, v) => u.p.y - v.p.y);           // du fond vers la caméra
-      for (const { p, a } of tous) palet(p.x, p.y, a ? 1.05 : 1.0, a ? C.a : C.b, a ? null : C.bBord, NUM[p.i], a ? C.aTxt : C.bTxt);
-      palet(ballon.x, ballon.y, 0.42, C.ballon, C === COUL.vert ? "#0c100e" : null);
+      for (const { p, a } of tous) palet(p.x, p.y, a ? 1.05 : 1.0, 0.55, a ? C.a : C.b, a ? C.aCote : C.bCote, a ? null : C.bBord, NUM[p.i], a ? C.aTxt : C.bTxt);
+      const pb = proj(ballon.x, ballon.y, 0.22);
+      if (pb) {
+        const rb = Math.max(2.2, Math.min(4.5, (0.5 * (w / 2)) / pb[2]));
+        ctx.fillStyle = C.ombre; ctx.beginPath(); ctx.ellipse(pb[0] + 1, pb[1] + rb * 0.8, rb, rb * 0.4, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = C.ballon; ctx.beginPath(); ctx.arc(pb[0], pb[1], rb, 0, Math.PI * 2); ctx.fill();
+        ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1; ctx.stroke();
+      }
     }
     function image(t) {
       if (!canvas.isConnected) { anime = false; return; }
       const dt = Math.min(0.05, (t - tPrec) / 1000); tPrec = t;
       avancer(dt); viser(dt);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = C.fond; ctx.fillRect(0, 0, w, h);
-      terrain(); joueurs();
+      tribunes(); terrain(); joueurs();
       if (anime && !calme) requestAnimationFrame(image);
     }
     function taille() {

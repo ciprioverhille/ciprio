@@ -43,8 +43,19 @@
   const posteNom = (k) => { const p = POSTES.find((x) => x[0] === k); return p ? (L() === "fr" ? p[2] : p[3]) : ""; };
   const ligne = (k) => { const p = POSTES.find((x) => x[0] === k); return p ? p[4] : ""; };
   const THEMES = [["pressing", "Pressing", "Pressing"], ["bloc", "Bloc défensif", "Defensive block"], ["relance", "Relance", "Build-up"],
-    ["transition", "Transitions", "Transitions"], ["offensif", "Animation offensive", "Attacking play"], ["cpa", "Coups de pied arrêtés", "Set pieces"], ["autre", "Autre", "Other"]];
-  const theme = (k) => { const t = THEMES.find((x) => x[0] === k); return t ? (L() === "fr" ? t[1] : t[2]) : k; };
+    ["transition", "Transitions", "Transitions"], ["offensif", "Animation offensive", "Attacking play"], ["cpa", "Coups de pied arrêtés", "Set pieces"]];
+  const theme = (k) => { const t = THEMES.find((x) => x[0] === k); return t ? (L() === "fr" ? t[1] : t[2]) : k === "perso" || k === "autre" ? T("Custom", "Personnalisée") : k; };
+  // une phrase d'exemple par présélection : le coach la réécrit avec ses mots (c'est un prompt)
+  const SUGG = {
+    pressing: ["Press the ball carrier within 5 s of losing the ball, 3 players around him.", "Presser le porteur dans les 5 s après la perte du ballon, à 3 autour de lui."],
+    bloc: ["Stay compact: less than 35 m between the last defender and the striker.", "Rester compacts : moins de 35 m entre le dernier défenseur et l'attaquant."],
+    relance: ["Play out short from the goalkeeper; centre backs split wide.", "Relancer court depuis le gardien ; les centraux s'écartent."],
+    transition: ["After winning the ball, 3 players sprint forward within 5 s.", "À la récupération, 3 joueurs se projettent vers l'avant dans les 5 s."],
+    offensif: ["Full backs hold the width; wingers attack the half-spaces.", "Les latéraux tiennent la largeur ; les ailiers attaquent les demi-espaces."],
+    cpa: ["Zonal marking on corners, 2 players on the posts.", "Marquage en zone sur les corners, 2 joueurs aux poteaux."],
+  };
+  const SUGG_IND = [["Stay in front of the defence when we lose the ball.", "Rester devant la défense à la perte du ballon."], ["Make runs in behind the full back.", "Faire des appels dans le dos du latéral."],
+    ["Press the opposing centre back on his weak foot.", "Presser le défenseur central adverse sur son mauvais pied."], ["Stay wide to stretch the block.", "Rester large pour étirer le bloc."]];
   const CATEGORIES = ["Seniors", "U19", "U18", "U17", "U16", "U15", "U14", "U13", "Féminines / Women"];
   const FONCTIONS = [["entraineur", "Entraîneur principal", "Head coach"], ["adjoint", "Entraîneur adjoint", "Assistant coach"], ["analyste", "Analyste vidéo", "Video analyst"],
     ["preparateur", "Préparateur physique", "Fitness coach"], ["dirigeant", "Dirigeant", "Club official"], ["autre", "Autre", "Other"]];
@@ -59,13 +70,14 @@
     return out;
   }
   // terrain vu de dessus, but de l'équipe en bas ; compo = [joueur_id | null] par place (0 = gardien)
-  function pitchSVG(sys, compo, sombre) {
+  function pitchSVG(sys, compo, sombre, positions) {
     const W = 68, H = 105, m = 3, X = (x) => m + (x / 100) * W, Y = (y) => m + (y / 100) * H;
     const stripes = Array.from({ length: 7 }, (_, k) => k % 2 ? `<rect class="stripe" x="${m}" y="${m + (k * H) / 7}" width="${W}" height="${H / 7}"/>` : "").join("");
     const box = (top) => { const y0 = top ? m : m + H - 16.5, y1 = top ? m : m + H - 5.5;
       return `<rect class="ln" x="${m + W / 2 - 20.16}" y="${y0}" width="40.32" height="16.5"/><rect class="ln" x="${m + W / 2 - 9.16}" y="${y1}" width="18.32" height="5.5"/>
         <path class="ln" d="M${m + W / 2 - 7.3} ${top ? m + 16.5 : m + H - 16.5} A9.15 9.15 0 0 ${top ? 0 : 1} ${m + W / 2 + 7.3} ${top ? m + 16.5 : m + H - 16.5}"/>`; };
-    const pl = placement(sys).map(([x, y], k) => {
+    const pl = placement(sys).map((d, k) => {
+      const [x, y] = (positions && positions[k]) || d;
       const j = compo && compo[k] ? D.joueurs.find((q) => q.id === compo[k]) : null;
       return `<g class="pl${k === 0 ? " gk" : ""}"><circle cx="${X(x)}" cy="${Y(y)}" r="2.9"/>${j && j.numero != null ? `<text x="${X(x)}" y="${Y(y)}">${j.numero}</text>` : ""}${j ? `<text class="nm" x="${X(x)}" y="${Y(y) + 5.2}">${esc(j.nom).slice(0, 12)}</text>` : ""}</g>`;
     }).join("");
@@ -85,6 +97,107 @@
     rows.forEach((n, r) => { for (let i = 0; i < n; i++) out.push(`${L() === "fr" ? noms[r][0] : noms[r][1]}${n > 1 ? " " + (i + 1) : ""}`); });
     return out;
   }
+  // ---------------------------------------------------------------- tableau tactique : grand terrain + effectif
+  // On glisse un joueur de l'effectif sur un pion ; on déplace les pions où l'on veut (ailiers plus bas, 6 plus bas…).
+  // Positions gardées en coordonnées du petit schéma : [x en travers 0-100, y en profondeur, 100 = notre but].
+  function tableau(el, o) {
+    let sys = o.sys || "4-3-3", COMPO = (o.compo || []).slice(), POS = (o.positions || []).map((p) => (p ? p.slice() : null));
+    const defaut = () => placement(sys);
+    const norm = () => { const n = defaut().length; COMPO = Array.from({ length: n }, (_, k) => COMPO[k] || null); POS = Array.from({ length: n }, (_, k) => POS[k] || null); };
+    const pos = (k) => POS[k] || defaut()[k];
+    const actifs = () => D.joueurs.filter((j) => j.actif);
+    const lignesSVG = `<svg class="tb-lines" viewBox="0 0 105 68" preserveAspectRatio="none" aria-hidden="true">
+      ${Array.from({ length: 10 }, (_, i) => i % 2 ? `<rect x="${i * 10.5}" y="0" width="10.5" height="68" fill="rgba(255,255,255,.035)"/>` : "").join("")}
+      <g fill="none" stroke="rgba(255,255,255,.7)" stroke-width=".35"><rect x=".5" y=".5" width="104" height="67"/><line x1="52.5" y1=".5" x2="52.5" y2="67.5"/><circle cx="52.5" cy="34" r="9.15"/>
+      <rect x=".5" y="13.84" width="16.5" height="40.32"/><rect x=".5" y="24.84" width="5.5" height="18.32"/><rect x="88" y="13.84" width="16.5" height="40.32"/><rect x="99" y="24.84" width="5.5" height="18.32"/>
+      <path d="M17 26.7A9.15 9.15 0 0 1 17 41.3"/><path d="M88 26.7A9.15 9.15 0 0 0 88 41.3"/></g>
+      <text x="3" y="66" font-size="2.2" fill="rgba(255,255,255,.55)" font-family="Geist Mono, monospace">${T("OUR GOAL", "NOTRE BUT")}</text>
+      <text x="102" y="66" font-size="2.2" fill="rgba(255,255,255,.55)" text-anchor="end" font-family="Geist Mono, monospace">${T("ATTACK →", "ATTAQUE →")}</text></svg>`;
+    // placement → écran (paysage, notre but à gauche)
+    const ecran = ([x, y]) => [100 - y, x];
+    const monde = (l, t) => [Math.max(3, Math.min(97, t)), Math.max(2, Math.min(98, 100 - l))];
+    let choisi = null;   // joueur choisi au doigt (téléphone) : on touche ensuite un pion
+    function dessiner() {
+      norm();
+      const P = places(sys);
+      el.innerHTML = `<div class="tb">
+        <div class="tb-pitch" id="tbp">${lignesSVG}${defaut().map((_, k) => {
+          const j = COMPO[k] ? D.joueurs.find((x) => x.id === COMPO[k]) : null, [l, t] = ecran(pos(k));
+          return `<div class="tb-pawn${j ? " on" : ""}${k === 0 ? " gk" : ""}" data-k="${k}" style="left:${l}%;top:${t}%" title="${esc(P[k])}${j ? " · " + T("double-click to remove", "double-clic pour retirer") : ""}"><b>${j && j.numero != null ? j.numero : ""}</b><span>${j ? esc(j.nom || j.prenom || "") : esc(P[k])}</span></div>`;
+        }).join("")}</div>
+        <aside class="tb-squad"><div class="tb-sh"><span class="label">${T("Squad", "Effectif")} · ${actifs().length}</span>${o.inscrire ? `<button type="button" class="linkbtn" id="tbAdd">${T("+ Register", "+ Inscrire")}</button>` : ""}</div>
+          <p class="tb-hint">${T("Drag a player onto a pawn. Move the pawns to set your shape.", "Glissez un joueur sur un pion. Déplacez les pions pour régler votre animation.")}</p>
+          <div class="tb-list">${actifs().map((j) => `<div class="tb-j${COMPO.includes(j.id) ? " used" : ""}${choisi === j.id ? " sel" : ""}" data-id="${j.id}"><b>${j.numero ?? "–"}</b><span>${esc([j.prenom, j.nom].filter(Boolean).join(" "))}</span><small>${esc(poste(j.poste) || "")}${j.statut && j.statut !== "disponible" ? " · " + esc(statut(j.statut)) : ""}</small></div>`).join("")
+            || `<p class="muted small">${T("No player registered yet.", "Aucun joueur inscrit pour l'instant.")}</p>`}</div>
+          <div class="tb-foot"><span class="muted small">${COMPO.filter(Boolean).length}/${defaut().length} ${T("placed", "placés")}</span><button type="button" class="linkbtn" id="tbReset">${T("Reset the pawns", "Replacer les pions")}</button></div></aside></div>`;
+      brancher();
+      if (o.onChange) o.onChange();
+    }
+    function assigner(k, id) {
+      const avant = COMPO.indexOf(id);
+      if (avant >= 0) COMPO[avant] = COMPO[k] && avant !== k ? COMPO[k] : null;   // un joueur déjà placé échange sa place
+      COMPO[k] = id;
+    }
+    function plusProche(px, py) {
+      const r = $("tbp").getBoundingClientRect(), l = ((px - r.left) / r.width) * 100, t = ((py - r.top) / r.height) * 100;
+      if (l < -2 || l > 102 || t < -2 || t > 102) return -1;
+      let best = -1, d0 = 1e9;
+      defaut().forEach((_, k) => { const [a, b] = ecran(pos(k)), d = Math.hypot((a - l) * (r.width / 100), (b - t) * (r.height / 100)); if (d < d0) { d0 = d; best = k; } });
+      return d0 < 70 ? best : -1;
+    }
+    function brancher() {
+      const pitch = $("tbp");
+      // pions : déplacer (glisser) ; double-clic = retirer le joueur ; toucher après avoir choisi un joueur = le placer
+      pitch.querySelectorAll(".tb-pawn").forEach((p) => {
+        const k = +p.dataset.k;
+        p.addEventListener("dblclick", () => { COMPO[k] = null; dessiner(); });
+        p.addEventListener("pointerdown", (ev) => {
+          ev.preventDefault(); p.setPointerCapture(ev.pointerId);
+          const r = pitch.getBoundingClientRect(), x0 = ev.clientX, y0 = ev.clientY; let bouge = false;
+          p.classList.add("drag");
+          const mv = (e) => {
+            if (Math.hypot(e.clientX - x0, e.clientY - y0) > 4) bouge = true;
+            if (!bouge) return;
+            const l = ((e.clientX - r.left) / r.width) * 100, t = ((e.clientY - r.top) / r.height) * 100, w = monde(l, t), [a, b] = ecran(w);
+            p.style.left = a + "%"; p.style.top = b + "%"; POS[k] = w;
+          };
+          const up = () => {
+            p.removeEventListener("pointermove", mv); p.removeEventListener("pointerup", up); p.classList.remove("drag");
+            if (!bouge && choisi) { assigner(k, choisi); choisi = null; }
+            dessiner();
+          };
+          p.addEventListener("pointermove", mv); p.addEventListener("pointerup", up);
+        });
+      });
+      // joueurs de l'effectif : glisser vers un pion ; simple clic = fiche (équipe) ou choix (téléphone)
+      el.querySelectorAll(".tb-j").forEach((c) => c.addEventListener("pointerdown", (ev) => {
+        ev.preventDefault();
+        const id = c.dataset.id, x0 = ev.clientX, y0 = ev.clientY; let g = null, cible = -1;
+        const mv = (e) => {
+          if (!g && Math.hypot(e.clientX - x0, e.clientY - y0) < 5) return;
+          if (!g) { g = c.cloneNode(true); g.className = "tb-j tb-ghost"; document.body.appendChild(g); }
+          g.style.left = e.clientX + "px"; g.style.top = e.clientY + "px";
+          cible = plusProche(e.clientX, e.clientY);
+          pitch.querySelectorAll(".tb-pawn").forEach((p) => p.classList.toggle("target", +p.dataset.k === cible));
+        };
+        const up = () => {
+          document.removeEventListener("pointermove", mv); document.removeEventListener("pointerup", up);
+          if (g) { g.remove(); if (cible >= 0) assigner(cible, id); dessiner(); return; }
+          if (o.fiche) o.fiche(D.joueurs.find((j) => j.id === id));
+          else { choisi = choisi === id ? null : id; dessiner(); }
+        };
+        document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
+      }));
+      $("tbReset").addEventListener("click", () => { POS = []; dessiner(); });
+      if ($("tbAdd")) $("tbAdd").addEventListener("click", o.inscrire);
+    }
+    dessiner();
+    return {
+      setSys(s) { sys = s; POS = []; dessiner(); },
+      get: () => ({ composition: COMPO.slice(), positions: POS.map((p) => (p ? p.map((v) => Math.round(v * 10) / 10) : null)) }),
+    };
+  }
+
   const nomJoueur = (j) => `${j.numero != null ? "#" + j.numero + " " : ""}${[j.prenom, j.nom].filter(Boolean).join(" ")}`;
   const age = (d) => { if (!d) return null; const b = new Date(d + "T12:00:00"), n = new Date(); let a = n.getFullYear() - b.getFullYear(); if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--; return a; };
   const STATUTS = [["disponible", "Disponible", "Available"], ["blesse", "Blessé", "Injured"], ["suspendu", "Suspendu", "Suspended"], ["absent", "Absent", "Unavailable"]];
@@ -498,7 +611,7 @@
       const rec = { coach_id: session.user.id, titre: (L() === "fr" ? "Contre " : "vs ") + adv, adversaire: adv, competition: $("comp").value.trim() || null,
         date_match: $("date").value || null, domicile: $("dom").value === "1", score_nous: n("sn"), score_eux: n("se"),
         couleur_nous: $("cn").value, couleur_eux: $("ce").value, equipe_id: ($("eq") && $("eq").value) || (D.equipe && D.equipe.id) || null,
-        plan: plan ? { plan_id: plan.id, nom: plan.nom, systeme: plan.systeme, consignes: plan.consignes, individuelles: plan.individuelles, composition: plan.composition || [] } : {}, video, etat: "cree" };
+        plan: plan ? { plan_id: plan.id, nom: plan.nom, systeme: plan.systeme, consignes: plan.consignes, individuelles: plan.individuelles, composition: plan.composition || [], positions: plan.positions || [] } : {}, video, etat: "cree" };
       const { data, error } = await sb.from("matchs").insert(rec).select("id").single();
       if (error) return msg(m, error.message, "err");
       if (video.type === "fichier") {
@@ -649,7 +762,7 @@
           <div class="field" style="margin-top:18px"><label for="plan">${T("Plan for this match", "Plan de ce match")}</label><select id="plan"><option value="">${T("No plan", "Aucun plan")}</option>${D.plans.map((x) => `<option value="${x.id}" ${p.plan_id === x.id ? "selected" : ""}>${esc(x.nom)}</option>`).join("")}</select></div>
           <div class="co-actions"><button class="btn btn-ink btn-sm" id="savePlan" type="button">${T("Use this plan", "Utiliser ce plan")}</button><a class="linkbtn" href="#/plan/nouveau">${T("Write a new plan", "Écrire un nouveau plan")}</a></div>
           <p class="form-msg" id="m"></p></div>
-        <div class="co-card"><h2>${T("Line-up", "Composition")}</h2><p class="sub">${esc(p.systeme || T("not set", "non précisé"))}</p>${pitchSVG(p.systeme || (D.equipe && D.equipe.systeme) || "4-3-3", p.composition || null)}</div></div>`;
+        <div class="co-card"><h2>${T("Line-up", "Composition")}</h2><p class="sub">${esc(p.systeme || T("not set", "non précisé"))}</p>${pitchSVG(p.systeme || (D.equipe && D.equipe.systeme) || "4-3-3", p.composition || null, false, p.positions)}</div></div>`;
     } else if (onglet === "rapport") {
       const pret = m.etat === "termine";
       corps = rapportApercu(pret);
@@ -670,7 +783,7 @@
       <nav class="tabs">${tabs.map(([k, t]) => `<a href="#/match/${m.id}/${k}"${k === onglet ? ' aria-current="page"' : ""}>${t}</a>`).join("")}</nav>${corps}`;
     if (onglet === "plan") $("savePlan").addEventListener("click", async () => {
       const p = D.plans.find((x) => x.id === $("plan").value);
-      const plan = p ? { plan_id: p.id, nom: p.nom, systeme: p.systeme, consignes: p.consignes, individuelles: p.individuelles, composition: p.composition || [] } : {};
+      const plan = p ? { plan_id: p.id, nom: p.nom, systeme: p.systeme, consignes: p.consignes, individuelles: p.individuelles, composition: p.composition || [], positions: p.positions || [] } : {};
       const { error } = await sb.from("matchs").update({ plan }).eq("id", m.id);
       if (error) return msg($("m"), error.message, "err");
       await charger(); matchView(id, "plan");
@@ -687,17 +800,27 @@
     });
   }
 
-  // aperçu du rapport (l'analyse tactique n'est pas encore produite : aperçu verrouillé, honnête)
+  // aperçu du rapport en 3 onglets : le système, les consignes collectives, les consignes individuelles.
+  // L'analyse tactique n'est pas encore produite : chiffres d'exemple, flous et verrouillés (honnête).
   function rapportApercu(pret) {
-    const ex = [[T("Pressing after loss", "Pressing après perte"), 72], [T("Block compactness", "Compacité du bloc"), 64], [T("Build-up from the back", "Relance courte"), 81], [T("Width in attack", "Largeur en attaque"), 55]];
-    return `<div class="co-card lock"><div class="blur">
-        <h2>${T("Game plan compliance", "Respect du plan de jeu")}</h2><p class="sub">${T("Each instruction measured over the whole match", "Chaque consigne mesurée sur tout le match")}</p>
-        <div class="bars">${ex.map(([t, v]) => `<div><span>${esc(t)}</span><span class="b"><i style="width:${v}%"></i></span><b>${v} %</b></div>`).join("")}</div>
-        <h2 style="margin-top:24px">${T("Players", "Joueurs")}</h2>
-        <div class="bars">${["#4", "#8", "#10", "#9"].map((n, k) => `<div><span>${n}</span><span class="b"><i style="width:${[78, 66, 59, 84][k]}%"></i></span><b>${[78, 66, 59, 84][k]} %</b></div>`).join("")}</div>
-      </div><div class="over"><div>${ICON.lock.replace("<svg", '<svg style="width:28px;height:28px;color:var(--muted);margin-bottom:8px"')}
+    const u = "rp" + Math.random().toString(36).slice(2, 7);
+    const bars = (l) => `<div class="bars">${l.map(([t, v, s]) => `<div><span>${esc(t)}${s ? `<small>${esc(s)}</small>` : ""}</span><span class="b"><i style="width:${v}%"></i></span><b>${v} %</b></div>`).join("")}</div>`;
+    const stat = (l) => `<div class="rp-stats">${l.map(([k, v, s]) => `<div><span class="k">${esc(k)}</span><b>${esc(v)}</b><small>${esc(s)}</small></div>`).join("")}</div>`;
+    const sys = `<h3 class="rp-h">${T("Did the system work?", "Le système a-t-il fonctionné ?")}</h3>
+      <p class="sub">${T("4-3-3 planned · 4-3-3 observed 78 % of the time, 4-4-2 when defending low.", "4-3-3 prévu · 4-3-3 observé 78 % du temps, 4-4-2 en bloc bas.")}</p>
+      ${stat([[T("Possession", "Possession"), "54 %", T("opponent 46 %", "adversaire 46 %")], [T("Block height", "Hauteur du bloc"), "41 m", T("from our goal", "de notre but")], [T("Compactness", "Compacité"), "33 m", T("defence → attack", "défense → attaque")],
+        ["PPDA", "9,8", T("passes allowed per defensive action", "passes adverses par action défensive")], [T("Balls won high", "Ballons gagnés haut"), "14", T("in their half", "dans leur moitié")], [T("Shots", "Tirs"), "12 – 7", T("for – against", "pour – contre")]])}
+      ${bars([[T("Time in planned shape", "Temps dans le système prévu"), 78], [T("Distance between lines respected", "Distance entre les lignes respectée"), 66], [T("Width in attack", "Largeur en attaque"), 58]])}`;
+    const col = `<h3 class="rp-h">${T("Team instructions", "Consignes collectives")}</h3><p class="sub">${T("Each instruction of your game plan, measured over the whole match.", "Chaque consigne de votre plan de jeu, mesurée sur tout le match.")}</p>
+      ${bars([[T("Press within 5 s of losing the ball", "Presser dans les 5 s après la perte"), 72, T("29 situations", "29 situations")], [T("Block under 35 m", "Bloc à moins de 35 m"), 64, T("whole match", "tout le match")], [T("Short build-up from the keeper", "Relance courte du gardien"), 81, T("16 goal kicks", "16 sorties de but")], [T("Zonal marking on corners", "Marquage en zone sur corners"), 55, T("9 corners", "9 corners")]])}`;
+    const ind = `<h3 class="rp-h">${T("Individual instructions", "Consignes individuelles")}</h3><p class="sub">${T("Player by player, with the key video moments for the debrief.", "Joueur par joueur, avec les moments vidéo clés pour le débrief.")}</p>
+      ${bars([["#6 · " + T("Stay in front of the defence", "Rester devant la défense"), 78], ["#7 · " + T("Runs behind the full back", "Appels dans le dos du latéral"), 61], ["#9 · " + T("Press the centre back", "Presser le défenseur central"), 84], ["#3 · " + T("Hold the width", "Tenir la largeur"), 59]])}`;
+    return `<div class="co-card lock rp"><input type="radio" name="${u}" id="${u}1" checked><input type="radio" name="${u}" id="${u}2"><input type="radio" name="${u}" id="${u}3">
+      <div class="rp-tabs"><label for="${u}1"><b>01</b>${T("The system", "Le système")}</label><label for="${u}2"><b>02</b>${T("Team instructions", "Consignes collectives")}</label><label for="${u}3"><b>03</b>${T("Individual instructions", "Consignes individuelles")}</label></div>
+      <div class="rp-body"><div class="blur"><div class="rp-p p1">${sys}</div><div class="rp-p p2">${col}</div><div class="rp-p p3">${ind}</div></div>
+      <div class="over"><div>${ICON.lock.replace("<svg", '<svg style="width:28px;height:28px;color:var(--muted);margin-bottom:8px"')}
         <b>${pret ? T("Your report is being finalised", "Votre rapport est en cours de finalisation") : T("The report will appear here", "Le rapport apparaîtra ici")}</b>
-        <p class="muted small">${T("Once the analysis is complete: how well each instruction of your game plan was followed, for the team and for each player, with the key video moments.", "Quand l'analyse sera terminée : le respect de chaque consigne de votre plan de jeu, pour l'équipe et pour chaque joueur, avec les moments clés en vidéo.")}</p></div></div></div>`;
+        <p class="muted small">${T("Three parts once the analysis is complete: the system (did it work, with the statistics), the team instructions, and the individual instructions.", "Trois parties quand l'analyse sera terminée : le système (a-t-il fonctionné, avec les statistiques), les consignes collectives et les consignes individuelles.")}</p></div></div></div></div>`;
   }
 
   // ================================================================ COMMENT ÇA MARCHE (tutoriel)
@@ -731,14 +854,14 @@
   function plansView() {
     view.innerHTML = `<div class="co-head"><div><h1>${T("Game plans", "Plans de jeu")}</h1><p>${T("Your pre-match instructions. Attach one to a match: Ciprio measures whether it was followed.", "Vos consignes d'avant-match. Attachez-en un à un match : Ciprio mesure s'il a été respecté.")}</p></div>
         <div class="actions"><a class="btn btn-ink" href="#/plan/nouveau">${T("+ New plan", "+ Nouveau plan")}</a></div></div>
-      ${D.plans.length ? `<div class="grid g3">${D.plans.map((p) => `<a class="co-card plan-card" href="#/plan/${p.id}"><span class="top"><span class="sys">${esc(p.systeme || "—")}</span><span class="label">${(p.composition || []).filter(Boolean).length}/11</span></span>${pitchSVG(p.systeme, p.composition && p.composition.some(Boolean) ? p.composition : null)}<h3>${esc(p.nom)}</h3>
+      ${D.plans.length ? `<div class="grid g3">${D.plans.map((p) => `<a class="co-card plan-card" href="#/plan/${p.id}"><span class="top"><span class="sys">${esc(p.systeme || "—")}</span><span class="label">${(p.composition || []).filter(Boolean).length}/11</span></span>${pitchSVG(p.systeme, p.composition && p.composition.some(Boolean) ? p.composition : null, false, p.positions)}<h3>${esc(p.nom)}</h3>
           <p class="muted small">${(p.consignes || []).length} ${T("team instructions", "consignes collectives")} · ${(p.individuelles || []).length} ${T("individual", "individuelles")}</p>
           <p class="muted small" style="margin-top:8px">${T("Updated ", "Modifié le ")}${esc(fmtDate(p.maj_le, { day: "numeric", month: "short" }))} · ${D.matchs.filter((m) => m.plan && m.plan.plan_id === p.id).length} ${T("match(es)", "match(s)")}</p></a>`).join("")}</div>`
         : vide(ICON.plan, T("No game plan yet", "Aucun plan de jeu pour l'instant"), T("Write your instructions once (pressing, block, build-up…), then reuse them match after match.", "Écrivez vos consignes une fois (pressing, bloc, relance…), puis réutilisez-les match après match."), `<a class="btn btn-ink btn-sm" href="#/plan/nouveau">${T("Write a plan", "Écrire un plan")}</a>`)}`;
   }
 
   function planView(id) {
-    const p0 = id === "nouveau" ? { nom: "", systeme: (D.equipe && D.equipe.systeme) || "4-3-3", consignes: [{ theme: "pressing", texte: "", mesure: "" }], individuelles: [], composition: [], notes: "" } : D.plans.find((x) => x.id === id);
+    const p0 = id === "nouveau" ? { nom: "", systeme: (D.equipe && D.equipe.systeme) || "4-3-3", consignes: [], individuelles: [], composition: [], positions: [], notes: "" } : D.plans.find((x) => x.id === id);
     const p = planView.brouillon && planView.brouillon.id === id ? planView.brouillon.p : p0;
     planView.brouillon = null;
     if (!p) { view.innerHTML = `<a class="back" href="#/plans">← ${T("Game plans", "Plans de jeu")}</a>${vide("", T("Plan not found", "Plan introuvable"), "")}`; return; }
@@ -750,53 +873,67 @@
         <div class="stack">
           <div class="co-card"><div class="frow"><div class="field"><label for="nom">${T("Plan name", "Nom du plan")}</label><input id="nom" value="${esc(p.nom)}" placeholder="${T("e.g. High press 4-3-3", "ex. Pressing haut 4-3-3")}"></div>
             <div class="field"><label for="sys">${T("System", "Système")}</label><select id="sys">${SYSTEMES.map((s) => `<option ${s === p.systeme ? "selected" : ""}>${s}</option>`).join("")}</select></div></div></div>
-          <div class="co-card"><div class="toolbar" style="margin-bottom:12px"><h2>${T("Team instructions", "Consignes collectives")}</h2><button class="btn btn-line btn-sm" type="button" id="addC">${T("+ Add", "+ Ajouter")}</button></div>
-            <div class="rowlist" id="lc"></div></div>
-          <div class="co-card"><div class="toolbar" style="margin-bottom:12px"><h2>${T("Individual instructions", "Consignes individuelles")}</h2><button class="btn btn-line btn-sm" type="button" id="addI">${T("+ Add", "+ Ajouter")}</button></div>
+          <div class="co-card cons-card"><div class="cons-h"><span class="label">${T("The team", "L'équipe")}</span><h2>${T("Team instructions", "Consignes collectives")}</h2>
+              <p class="sub">${T("Write them as you would say them to your players: Ciprio reads your words and measures them on the match.", "Écrivez-les comme vous les diriez à vos joueurs : Ciprio lit vos mots et les mesure sur le match.")}</p></div>
+            <h3 class="cons-t">${T("Presets", "Présélections")}</h3>
+            <div class="presets" id="presets">${THEMES.map((t) => `<button type="button" data-t="${t[0]}">+ ${L() === "fr" ? t[1] : t[2]}</button>`).join("")}</div>
+            <div class="rowlist" id="lc"></div>
+            <h3 class="cons-t">${T("Custom instructions", "Consignes personnalisées")}</h3>
+            <div class="rowlist" id="lp"></div>
+            <button class="btn btn-line btn-sm" type="button" id="addP">${T("+ Write a custom instruction", "+ Écrire une consigne personnalisée")}</button></div>
+          <div class="co-card cons-card"><div class="cons-h"><span class="label">${T("Player by player", "Joueur par joueur")}</span><h2>${T("Individual instructions", "Consignes individuelles")}</h2>
+              <p class="sub">${T("Choose a player, then describe what you expect from him.", "Choisissez un joueur, puis décrivez ce que vous attendez de lui.")}</p></div>
             ${D.joueurs.length ? "" : `<p class="muted small" style="margin-bottom:10px">${T("Add your players in “Your team” to assign instructions to them.", "Ajoutez vos joueurs dans « Votre équipe » pour leur donner des consignes.")}</p>`}
-            <div class="rowlist" id="li"></div></div>
+            <div class="rowlist" id="li"></div>
+            <button class="btn btn-line btn-sm" type="button" id="addI">${T("+ Instruction for a player", "+ Consigne pour un joueur")}</button></div>
           <div class="co-card"><div class="field" style="margin:0"><label for="notes">${T("Notes", "Notes")}</label><textarea id="notes" placeholder="${T("Context, opponent's strengths…", "Contexte, points forts de l'adversaire…")}">${esc(p.notes || "")}</textarea></div></div>
         </div>
-        <div class="stack"><div class="co-card"><div class="toolbar" style="margin-bottom:4px"><h2>${T("Line-up", "Composition")}</h2><button class="btn btn-line btn-sm" type="button" id="newJ">${T("+ Register a player", "+ Inscrire un joueur")}</button></div>
-            <p class="sub" id="sysLabel">${esc(p.systeme)}</p><div id="pitch"></div><div id="compo" class="compo"></div></div>
+        <div class="stack">
           <div class="co-card"><h2>${T("Good instructions", "De bonnes consignes")}</h2><ul class="tips">
             <li><b>1</b><span>${T("One action per line: “Press the centre back within 3 s after losing the ball”.", "Une action par ligne : « Presser le défenseur central dans les 3 s après la perte ».")}</span></li>
             <li><b>2</b><span>${T("A measurable target: distance, time, zone, number.", "Un objectif mesurable : distance, temps, zone, nombre.")}</span></li>
             <li><b>3</b><span>${T("Few instructions, the ones that matter for this match.", "Peu de consignes : celles qui comptent pour ce match.")}</span></li></ul></div>
           <div class="co-card"><div class="co-actions" style="margin:0"><button class="btn btn-ink" type="submit">${T("Save the plan", "Enregistrer le plan")}</button>${id !== "nouveau" ? `<button class="btn btn-danger btn-sm" type="button" id="del">${T("Delete", "Supprimer")}</button>` : ""}</div><p class="form-msg" id="m"></p></div>
-        </div></div></form>`;
+        </div></div>
+        <div class="co-card" style="margin-top:18px"><div class="card-h"><div><span class="label">${T("Line-up", "Composition")}</span><h2>${T("Your team on the pitch", "Votre équipe sur le terrain")} · <span id="sysLabel">${esc(p.systeme)}</span></h2></div></div><div id="board"></div></div></form>`;
+    const prompt = (k, val, ph, f = "texte") => `<textarea class="prompt" data-f="${f}" rows="2" placeholder="${esc(ph)}">${esc(val || "")}</textarea>`;
     const drawC = () => {
-      $("lc").innerHTML = C.length ? C.map((c, k) => `<div class="crow" data-k="${k}"><select data-f="theme">${THEMES.map((t) => `<option value="${t[0]}" ${c.theme === t[0] ? "selected" : ""}>${L() === "fr" ? t[1] : t[2]}</option>`).join("")}</select>
-        <input class="txt" data-f="texte" value="${esc(c.texte)}" placeholder="${T("Instruction", "Consigne")}"><input data-f="mesure" value="${esc(c.mesure || "")}" placeholder="${T("Target (e.g. < 35 m)", "Objectif (ex. < 35 m)")}">
-        <button class="iconbtn" type="button" data-del="${k}" aria-label="${T("Remove", "Retirer")}">${ICON.trash}</button></div>`).join("") : `<p class="muted small">${T("No team instruction.", "Aucune consigne collective.")}</p>`;
-      $("lc").querySelectorAll("[data-f]").forEach((el) => el.addEventListener("input", () => { C[el.closest(".crow").dataset.k][el.dataset.f] = el.value; }));
-      $("lc").querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { C.splice(Number(b.dataset.del), 1); drawC(); }));
+      const pre = C.map((c, k) => [c, k]).filter(([c]) => c.theme !== "perso" && c.theme !== "autre");
+      const per = C.map((c, k) => [c, k]).filter(([c]) => c.theme === "perso" || c.theme === "autre");
+      $("lc").innerHTML = pre.map(([c, k]) => `<div class="prow" data-k="${k}"><div class="prow-h"><span class="tag strong">${esc(theme(c.theme))}</span>
+          <input data-f="mesure" value="${esc(c.mesure || "")}" placeholder="${T("Target (optional, e.g. < 5 s)", "Objectif (facultatif, ex. < 5 s)")}">
+          <button class="iconbtn" type="button" data-del="${k}" aria-label="${T("Remove", "Retirer")}">${ICON.trash}</button></div>
+        ${prompt(k, c.texte, T("Describe the instruction in your own words…", "Décrivez la consigne avec vos mots…"))}</div>`).join("")
+        || `<p class="muted small">${T("Pick a preset above: an example is written, rewrite it your way.", "Choisissez une présélection ci-dessus : un exemple s'écrit, réécrivez-le à votre façon.")}</p>`;
+      $("lp").innerHTML = per.map(([c, k]) => `<div class="prow perso" data-k="${k}"><div class="prow-h"><span class="tag">${T("Custom", "Personnalisée")}</span>
+          <input data-f="mesure" value="${esc(c.mesure || "")}" placeholder="${T("Target (optional)", "Objectif (facultatif)")}">
+          <button class="iconbtn" type="button" data-del="${k}" aria-label="${T("Remove", "Retirer")}">${ICON.trash}</button></div>
+        ${prompt(k, c.texte, T("e.g. When their number 6 receives facing his goal, our number 10 cuts the pass to the centre back and the winger presses the full back…", "ex. Quand leur 6 reçoit dos au jeu, notre 10 coupe la passe vers le central et l'ailier presse le latéral…"))}</div>`).join("");
+      [$("lc"), $("lp")].forEach((box) => {
+        box.querySelectorAll("[data-f]").forEach((el) => el.addEventListener("input", () => { C[el.closest(".prow").dataset.k][el.dataset.f] = el.value; }));
+        box.querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { C.splice(Number(b.dataset.del), 1); drawC(); }));
+      });
     };
     const drawI = () => {
-      $("li").innerHTML = IND.length ? IND.map((c, k) => `<div class="crow ind" data-k="${k}"><select data-f="joueur_id">${joueursOpts(c.joueur_id)}</select>
-        <input class="txt" data-f="texte" value="${esc(c.texte)}" placeholder="${T("Instruction for this player", "Consigne pour ce joueur")}">
-        <button class="iconbtn" type="button" data-del="${k}" aria-label="${T("Remove", "Retirer")}">${ICON.trash}</button></div>`).join("") : `<p class="muted small">${T("No individual instruction.", "Aucune consigne individuelle.")}</p>`;
-      $("li").querySelectorAll("[data-f]").forEach((el) => el.addEventListener("input", () => { IND[el.closest(".crow").dataset.k][el.dataset.f] = el.value; }));
+      $("li").innerHTML = IND.map((c, k) => `<div class="prow" data-k="${k}"><div class="prow-h"><select data-f="joueur_id">${joueursOpts(c.joueur_id)}</select>
+          <button class="iconbtn" type="button" data-del="${k}" aria-label="${T("Remove", "Retirer")}">${ICON.trash}</button></div>
+        ${prompt(k, c.texte, T("Describe what you expect from this player…", "Décrivez ce que vous attendez de ce joueur…"))}
+        <div class="sugg">${SUGG_IND.map((x, i) => `<button type="button" data-s="${i}">${esc(L() === "fr" ? x[1] : x[0])}</button>`).join("")}</div></div>`).join("")
+        || `<p class="muted small">${T("No individual instruction.", "Aucune consigne individuelle.")}</p>`;
+      $("li").querySelectorAll("[data-f]").forEach((el) => el.addEventListener("input", () => { IND[el.closest(".prow").dataset.k][el.dataset.f] = el.value; }));
       $("li").querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { IND.splice(Number(b.dataset.del), 1); drawI(); }));
+      $("li").querySelectorAll("[data-s]").forEach((b) => b.addEventListener("click", () => { const k = b.closest(".prow").dataset.k, x = SUGG_IND[+b.dataset.s]; IND[k].texte = L() === "fr" ? x[1] : x[0]; drawI(); }));
     };
-    const drawCompo = () => {
-      const sys = $("sys").value, P = places(sys);
-      COMPO = P.map((_, k) => COMPO[k] || null);
-      $("pitch").innerHTML = pitchSVG(sys, COMPO);
-      const opts = (k) => `<option value="">–</option>${D.joueurs.filter((j) => j.actif).map((j) => `<option value="${j.id}" ${COMPO[k] === j.id ? "selected" : ""} ${COMPO.includes(j.id) && COMPO[k] !== j.id ? "disabled" : ""}>${esc(nomJoueur(j))}${j.poste ? " · " + esc(poste(j.poste)) : ""}</option>`).join("")}`;
-      $("compo").innerHTML = D.joueurs.length ? P.map((n, k) => `<label><span>${esc(n)}</span><select data-k="${k}">${opts(k)}</select></label>`).join("")
-        : `<p class="muted small">${T("Register your players to build the line-up.", "Inscrivez vos joueurs pour faire la composition.")}</p>`;
-      $("compo").querySelectorAll("select").forEach((el) => el.addEventListener("change", () => { COMPO[Number(el.dataset.k)] = el.value || null; drawCompo(); }));
-    };
+    let POSI = p.positions || [];
+    if (id === "nouveau" && !COMPO.some(Boolean) && D.equipe && (D.equipe.composition || []).some(Boolean) && D.equipe.systeme === p.systeme) { COMPO = D.equipe.composition.slice(); POSI = (D.equipe.positions || []).slice(); }
+    let TB = null;
+    const brouillon = () => ({ ...p, nom: $("nom").value, systeme: $("sys").value, consignes: C, individuelles: IND, ...TB.get(), notes: $("notes").value });
+    const drawCompo = () => { TB = tableau($("board"), { sys: $("sys").value, compo: COMPO, positions: POSI, inscrire: () => joueurDlg(null, () => { planView.brouillon = { id, p: brouillon() }; planView(id); }) }); };
     drawC(); drawI(); drawCompo();
-    // inscrire un joueur sans quitter le plan : le brouillon est gardé, puis la page revient avec le joueur dans les listes
-    $("newJ").addEventListener("click", () => joueurDlg(null, () => {
-      planView.brouillon = { id, p: { ...p, nom: $("nom").value, systeme: $("sys").value, consignes: C, individuelles: IND, composition: COMPO, notes: $("notes").value } };
-      planView(id);
-    }));
-    $("addC").addEventListener("click", () => { C.push({ theme: "pressing", texte: "", mesure: "" }); drawC(); });
+    $("presets").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const x = SUGG[b.dataset.t]; C.push({ theme: b.dataset.t, texte: x ? (L() === "fr" ? x[1] : x[0]) : "", mesure: "" }); drawC(); }));
+    $("addP").addEventListener("click", () => { C.push({ theme: "perso", texte: "", mesure: "" }); drawC(); const t = $("lp").querySelectorAll("textarea"); if (t.length) t[t.length - 1].focus(); });
     $("addI").addEventListener("click", () => { IND.push({ joueur_id: "", texte: "" }); drawI(); });
-    $("sys").addEventListener("change", () => { $("sysLabel").textContent = $("sys").value; drawCompo(); });
+    $("sys").addEventListener("change", () => { $("sysLabel").textContent = $("sys").value; TB.setSys($("sys").value); });
     if ($("del")) $("del").addEventListener("click", async () => {
       if (!confirm(T("Delete this plan? Matches keep their own copy.", "Supprimer ce plan ? Les matchs gardent leur copie."))) return;
       const { error } = await sb.from("plans_de_jeu").delete().eq("id", p.id);
@@ -807,7 +944,7 @@
       ev.preventDefault();
       const nom = $("nom").value.trim();
       if (!nom) return msg($("m"), T("Give the plan a name.", "Donnez un nom au plan."), "err");
-      const rec = { nom, systeme: $("sys").value, consignes: C.filter((c) => c.texte.trim()), individuelles: IND.filter((c) => c.texte.trim() && c.joueur_id), composition: COMPO, notes: $("notes").value.trim() || null, equipe_id: (D.equipe && D.equipe.id) || null };
+      const rec = { nom, systeme: $("sys").value, consignes: C.filter((c) => c.texte.trim()), individuelles: IND.filter((c) => c.texte.trim() && c.joueur_id), ...TB.get(), notes: $("notes").value.trim() || null, equipe_id: (D.equipe && D.equipe.id) || null };
       const r = id === "nouveau" ? await sb.from("plans_de_jeu").insert({ ...rec, coach_id: session.user.id }).select("id").single() : await sb.from("plans_de_jeu").update(rec).eq("id", p.id).select("id").single();
       if (r.error) return msg($("m"), r.error.message, "err");
       await charger();
@@ -823,31 +960,30 @@
     const par = (l) => J.filter((j) => j.actif && ligne(j.poste) === l).length;
     view.innerHTML = `<div class="co-head"><div class="team-head"><span class="crest" style="background:${esc(e.couleur_domicile || "#12a150")}">${esc((e.club || e.nom).slice(0, 2).toUpperCase())}</span>
           <div><h1>${esc(e.nom)}</h1><p style="margin-top:2px">${esc([e.club, e.categorie, e.niveau].filter(Boolean).join(" · "))}</p></div></div>
+        <dl class="kv"><div><dt>${T("Players", "Joueurs")}</dt><dd>${J.filter((j) => j.actif).length}</dd></div><div><dt>${T("Available", "Disponibles")}</dt><dd>${J.filter((j) => j.actif && (!j.statut || j.statut === "disponible")).length}</dd></div><div><dt>${T("System", "Système")}</dt><dd>${esc(e.systeme || "4-3-3")}</dd></div></dl>
         <div class="actions"><button class="btn btn-line" id="edit" type="button">${T("Edit the team", "Modifier l'équipe")}</button><button class="btn btn-ink" id="add" type="button">${T("+ Register a player", "+ Inscrire un joueur")}</button></div></div>
-      <div class="grid g-main">
-        <div class="co-card" style="padding:8px 8px 4px">
-          <div class="toolbar" style="padding:14px 14px 0;margin-bottom:8px"><h2>${T("Squad", "Effectif")} <span class="muted" style="font-weight:400">· ${J.filter((j) => j.actif).length}</span></h2></div>
-          ${J.length ? `<div style="overflow-x:auto"><table class="table"><thead><tr><th>${T("No.", "N°")}</th><th>${T("Player", "Joueur")}</th><th>${T("Positions", "Postes")}</th><th>${T("Foot", "Pied")}</th><th>${T("Age", "Âge")}</th><th>${T("Status", "Statut")}</th></tr></thead><tbody>
-            ${J.map((j) => `<tr data-id="${j.id}" style="${j.actif ? "" : "opacity:.5"}"><td><span class="num">${j.numero ?? "–"}</span></td><td><b>${esc([j.prenom, j.nom].filter(Boolean).join(" "))}</b>${j.capitaine ? ' <span class="tag cap">C</span>' : ""}${j.club_precedent ? `<br><span class="muted small">${T("from ", "vient de ")}${esc(j.club_precedent)}</span>` : ""}</td>
-              <td>${j.poste ? `<span class="tag strong" title="${esc(posteNom(j.poste))}">${esc(poste(j.poste))}</span>` : ""} ${(j.postes_secondaires || []).map((x) => `<span class="tag" title="${esc(posteNom(x))}">${esc(poste(x))}</span>`).join(" ")}</td>
-              <td class="muted">${esc(({ droit: T("Right", "Droit"), gauche: T("Left", "Gauche"), deux: T("Both", "Les deux") })[j.pied] || "")}</td>
-              <td class="muted">${age(j.date_naissance) ?? ""}</td>
-              <td>${!j.actif ? `<span class="muted small">${T("left the squad", "hors effectif")}</span>` : j.statut && j.statut !== "disponible" ? `<span class="tag st-${j.statut}">${esc(statut(j.statut))}</span>` : `<span class="muted small">${esc(statut("disponible"))}</span>`}</td></tr>`).join("")}</tbody></table></div>`
-            : `<div class="empty">${ICON.team}<p>${T("No player yet.", "Aucun joueur pour l'instant.")}</p><p class="small">${T("Numbers help Ciprio recognise your players on video.", "Les numéros aident Ciprio à reconnaître vos joueurs sur la vidéo.")}</p></div>`}
-        </div>
-        <div class="stack">
-          <div class="co-card"><h2>${T("By line", "Par ligne")}</h2><div class="lines">
-            <div><b>${par("G")}</b><span>${T("Goalkeepers", "Gardiens")}</span></div><div><b>${par("D")}</b><span>${T("Defenders", "Défenseurs")}</span></div>
-            <div><b>${par("M")}</b><span>${T("Midfielders", "Milieux")}</span></div><div><b>${par("A")}</b><span>${T("Forwards", "Attaquants")}</span></div></div></div>
-          <div class="co-card"><h2>${T("Usual system", "Système habituel")}</h2><p class="sub">${esc(e.systeme || "4-3-3")}</p>${pitchSVG(e.systeme || "4-3-3")}</div>
-          <div class="co-card"><h2>${T("Team", "Équipe")}</h2><dl class="dl" style="margin-top:12px">
-            <dt>${T("Home shirt", "Maillot domicile")}</dt><dd><span class="swatch" style="background:${esc(e.couleur_domicile || "#fff")}"></span></dd>
-            <dt>${T("Away shirt", "Maillot extérieur")}</dt><dd><span class="swatch" style="background:${esc(e.couleur_exterieur || "#fff")}"></span></dd>
-            <dt>${T("Ground", "Stade")}</dt><dd>${esc(e.stade || "–")}</dd></dl></div>
-        </div></div>`;
+      <div class="co-card">
+        <div class="card-h"><div><span class="label">${T("Usual system", "Système habituel")}</span><h2>${T("Your line-up and its shape", "Votre composition et son animation")}</h2></div>
+          <div class="co-actions" style="margin:0"><select class="sel" id="sys">${SYSTEMES.map((s) => `<option ${s === (e.systeme || "4-3-3") ? "selected" : ""}>${s}</option>`).join("")}</select><button class="btn btn-ink btn-sm" id="saveC" type="button">${T("Save", "Enregistrer")}</button></div></div>
+        <div id="board"></div><p class="form-msg" id="m"></p></div>
+      <div class="grid g2" style="margin-top:18px">
+        <div class="co-card"><h2>${T("By line", "Par ligne")}</h2><div class="lines">
+          <div><b>${par("G")}</b><span>${T("Goalkeepers", "Gardiens")}</span></div><div><b>${par("D")}</b><span>${T("Defenders", "Défenseurs")}</span></div>
+          <div><b>${par("M")}</b><span>${T("Midfielders", "Milieux")}</span></div><div><b>${par("A")}</b><span>${T("Forwards", "Attaquants")}</span></div></div></div>
+        <div class="co-card"><h2>${T("Team", "Équipe")}</h2><dl class="dl" style="margin-top:12px">
+          <dt>${T("Home shirt", "Maillot domicile")}</dt><dd><span class="swatch" style="background:${esc(e.couleur_domicile || "#fff")}"></span></dd>
+          <dt>${T("Away shirt", "Maillot extérieur")}</dt><dd><span class="swatch" style="background:${esc(e.couleur_exterieur || "#fff")}"></span></dd>
+          <dt>${T("Ground", "Stade")}</dt><dd>${esc(e.stade || "–")}</dd></dl></div>
+      </div>`;
+    const TB = tableau($("board"), { sys: e.systeme || "4-3-3", compo: e.composition || [], positions: e.positions || [], fiche: (j) => joueurDlg(j), inscrire: () => joueurDlg(null) });
+    $("sys").addEventListener("change", () => TB.setSys($("sys").value));
+    $("saveC").addEventListener("click", async () => {
+      const { error } = await sb.from("equipes").update({ systeme: $("sys").value, ...TB.get() }).eq("id", e.id);
+      if (error) return msg($("m"), error.message, "err");
+      await charger(); msg($("m"), T("Line-up saved.", "Composition enregistrée."), "ok");
+    });
     $("edit").addEventListener("click", () => equipeForm(e));
     $("add").addEventListener("click", () => joueurDlg(null));
-    view.querySelectorAll("tbody tr").forEach((tr) => tr.addEventListener("click", () => joueurDlg(D.joueurs.find((j) => j.id === tr.dataset.id))));
   }
 
   function equipeForm(e) {
@@ -863,8 +999,15 @@
         <div class="frow3"><div class="field"><label for="cd">${T("Home shirt", "Maillot domicile")}</label><input id="cd" type="color" value="${esc(v.couleur_domicile || "#12a150")}"></div>
           <div class="field"><label for="cx">${T("Away shirt", "Maillot extérieur")}</label><input id="cx" type="color" value="${esc(v.couleur_exterieur || "#ffffff")}"></div>
           <div class="field"><label for="stade">${T("Home ground", "Stade")}</label><input id="stade" value="${esc(v.stade || "")}"></div></div>
-        <div class="co-actions"><button class="btn btn-ink" type="submit">${e ? T("Save", "Enregistrer") : T("Create the team →", "Créer l'équipe →")}</button>${e ? `<a class="linkbtn" href="#/equipe">${T("Cancel", "Annuler")}</a>` : ""}</div>
+        <div class="co-actions"><button class="btn btn-ink" type="submit">${e ? T("Save", "Enregistrer") : T("Create the team →", "Créer l'équipe →")}</button>${e ? `<a class="linkbtn" href="#/equipe">${T("Cancel", "Annuler")}</a><span style="margin-left:auto"></span><button class="btn btn-danger btn-sm" type="button" id="delE">${T("Delete the team", "Supprimer l'équipe")}</button>` : ""}</div>
         <p class="form-msg" id="m"></p></form>`;
+    if ($("delE")) $("delE").addEventListener("click", async () => {
+      const n = D.joueurs.filter((j) => j.equipe_id === e.id).length;
+      if (!confirm(T(`Delete “${e.nom}”? Its ${n} player(s) are deleted too. Your matches and game plans are kept. This cannot be undone.`, `Supprimer « ${e.nom} » ? Ses ${n} joueur(s) sont supprimés aussi. Vos matchs et plans de jeu sont gardés. C'est définitif.`))) return;
+      const { error } = await sb.from("equipes").delete().eq("id", e.id);
+      if (error) return msg($("m"), error.message, "err");
+      await charger(); location.hash = "#/equipe"; route();
+    });
     $("f").addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const nom = $("nom").value.trim();
@@ -898,10 +1041,6 @@
       <h3 class="dsec">${T("Physical", "Physique")}</h3>
       <div class="frow"><div class="field"><label for="jt">${T("Height (cm)", "Taille (cm)")}</label><input id="jt" type="number" min="100" max="230" value="${v.taille_cm ?? ""}"></div>
         <div class="field"><label for="jw">${T("Weight (kg)", "Poids (kg)")}</label><input id="jw" type="number" min="30" max="150" value="${v.poids_kg ?? ""}"></div></div>
-      <h3 class="dsec">${T("Career", "Parcours")}</h3>
-      <div class="frow3"><div class="field"><label for="jcp">${T("Previous club", "Club précédent")}</label><input id="jcp" value="${esc(v.club_precedent || "")}"></div>
-        <div class="field"><label for="jar">${T("Joined on", "Arrivé le")}</label><input id="jar" type="date" value="${esc(v.arrive_le || "")}"></div>
-        <div class="field"><label for="jli">${T("Licence no.", "N° de licence")}</label><input id="jli" value="${esc(v.licence || "")}"></div></div>
       <div class="field"><label for="jno">${T("Notes", "Notes")} <small>${T("(strengths, areas to work on…)", "(points forts, axes de travail…)")}</small></label><textarea id="jno">${esc(v.notes || "")}</textarea></div>
       <label class="switch" style="border:0;padding-top:0"><span>${T("In the current squad", "Dans l'effectif actuel")}</span><input id="ja" type="checkbox" ${v.actif ? "checked" : ""}></label>
       <p class="form-msg" id="jm"></p>
@@ -928,7 +1067,7 @@
       const rec = { prenom: $("jp").value.trim() || null, nom, numero: num, poste: princ, pied: $("jpi").value || null, actif: $("ja").checked,
         postes_secondaires: [...$("jsec").querySelectorAll('button[aria-pressed="true"]')].map((b) => b.dataset.p).filter((x) => x !== princ),
         date_naissance: $("jdn").value || null, nationalite: $("jnat").value.trim() || null, statut: $("jst").value, capitaine: $("jcap").checked,
-        taille_cm: n("jt"), poids_kg: n("jw"), club_precedent: $("jcp").value.trim() || null, arrive_le: $("jar").value || null, licence: $("jli").value.trim() || null, notes: $("jno").value.trim() || null };
+        taille_cm: n("jt"), poids_kg: n("jw"), notes: $("jno").value.trim() || null };
       const r = j ? await sb.from("joueurs").update(rec).eq("id", j.id) : await sb.from("joueurs").insert({ ...rec, coach_id: session.user.id, equipe_id: D.equipe.id });
       if (r.error) return msg($("jm"), r.error.message, "err");
       fini();
