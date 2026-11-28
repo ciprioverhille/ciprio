@@ -950,7 +950,12 @@ svg .pt{cursor:pointer;stroke:var(--dark);stroke-width:.35}
   async function finish() {
     $("work").hidden = true; $("end").hidden = false; nav(false);
     const endp = $("endp");
-    const old = endp.innerHTML;
+    // texte de fin d'origine gardé UNE fois : un 2e clic sur « Terminer » ne doit pas le remplacer par l'attente
+    // (28/11/2026 : page restée sur « Vérification de vos repères… » après un double clic)
+    if (endp.dataset.fin === undefined) endp.dataset.fin = endp.innerHTML;
+    const old = endp.dataset.fin;
+    if (finish.enCours) return;
+    finish.enCours = true;
     endp.textContent = T("Checking your markings…", "Vérification de vos repères…");
     try {
       await flushSave();
@@ -960,6 +965,7 @@ svg .pt{cursor:pointer;stroke:var(--dark);stroke-width:.35}
         ? T(`Your pitch is set up ✓ Ciprio calculated ${r.calcules.length} marking${r.calcules.length > 1 ? "s" : ""} from yours. You can close this page.`, `Votre terrain est réglé ✓ Ciprio a calculé ${r.calcules.length} repère${r.calcules.length > 1 ? "s" : ""} à partir des vôtres. Vous pouvez fermer cette page.`)
         : old;
     } catch (e) { endp.innerHTML = old; }
+    finish.enCours = false;
   }
   document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
     setLang(b.dataset.lang); introN();
