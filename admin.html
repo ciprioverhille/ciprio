@@ -47,6 +47,7 @@
     <button role="tab" id="tab-taches" aria-controls="p-taches" data-tab="taches">Tâches <span class="tab-count" id="todo-count"></span></button>
     <button role="tab" id="tab-reussi" aria-controls="p-reussi" data-tab="reussi">Réalisations</button>
     <button role="tab" id="tab-etapes" aria-controls="p-etapes" data-tab="etapes">Étapes</button>
+    <button role="tab" id="tab-matchs" aria-controls="p-matchs" data-tab="matchs">Matchs <span class="tab-count" id="match-count"></span></button>
     <button role="tab" id="tab-prospection" aria-controls="p-prospection" data-tab="prospection">Prospection <span class="tab-count" id="reply-count"></span></button>
   </div>
 
@@ -137,6 +138,21 @@
 
     <h2 class="adm-h2">Messages reçus par le formulaire Contact</h2>
     <div id="cm"></div>
+  </section>
+
+  <!-- Onglet Matchs : chaque match envoyé par un coach sur ciprio.ai/app, son état, ses tâches -->
+  <section class="adm-panel" role="tabpanel" id="p-matchs" aria-labelledby="tab-matchs" hidden>
+    <div class="adm-sec-head">
+      <div><h1>Matchs</h1><p class="muted">Les matchs des coachs (espace <a href="/app">ciprio.ai/app</a>) : où en est chaque analyse. Clique sur un match pour voir son journal.</p></div>
+      <button class="btn btn-line" id="m-refresh" type="button">Actualiser</button>
+    </div>
+    <div class="adm-kpis">
+      <div class="adm-card"><span class="k">Matchs</span><b id="k-matchs">–</b><small id="k-matchs-d"></small></div>
+      <div class="adm-card"><span class="k">À pointer par le coach</span><b id="k-apointer">–</b><small>en attente du coach</small></div>
+      <div class="adm-card adm-dark"><span class="k">Calcul (pont / GPU)</span><b id="k-pont">–</b><small id="k-pont-d"></small></div>
+    </div>
+    <div class="adm-scroll"><table class="adm-table"><thead><tr><th>Créé le</th><th>Match</th><th>Coach</th><th>État</th><th>Images pointées</th><th>Dernière tâche</th></tr></thead><tbody id="m-list"></tbody></table></div>
+    <div id="m-detail"></div>
   </section>
 </main>
 
@@ -483,8 +499,64 @@ body{background:var(--bg)}
     rows = e.data; revenues = r.data; changes = c.data; tasks = k.data; achievements = a.data;
     steplog = (st && st.data) || [];
     outreach = o.data || []; waitlist = w.data || []; contacts = m.data || [];
-    render(); renderPros();
+    render(); renderPros(); loadMatchs();
   }
+
+  // ----- Matchs des coachs (chantier A) -----
+  const ETAT_M = { cree: "Match créé", video_recue: "Vidéo reçue", preparation: "Préparation", a_pointer: "À pointer (coach)", pointage_fini: "Terrain réglé",
+    calcul: "Suivi du match", controle: "Contrôle qualité", termine: "Terminé", erreur: "Problème" };
+  const TYPE_T = { preparer: "Préparation", recaler_lignes: "Recalage sur les lignes", prevoir: "Repères calculés", completer: "Fin du pointage", apres: "Suivi du match" };
+  const ETAT_T = { en_attente: "en attente", en_cours: "en cours", fini: "fini", erreur: "ERREUR" };
+  let matchs = [], openMatch = null;
+  async function loadMatchs() {
+    const [m, p, i, pt, t, w] = await Promise.all([
+      sb.from("matchs").select("*").order("cree_le", { ascending: false }),
+      sb.from("profils").select("*"),
+      sb.from("images_pointage").select("match_id"),
+      sb.from("pointages").select("match_id"),
+      sb.from("taches").select("id,match_id,type,etat,message,travailleur,cree_le,debut,fin").order("cree_le", { ascending: false }).limit(500),
+      sb.from("travailleurs").select("*").order("vu_le", { ascending: false }),
+    ]);
+    if (m.error) { $("m-list").innerHTML = '<tr><td colspan="6" class="form-msg err">Erreur : ' + esc(m.error.message) + "</td></tr>"; return; }
+    matchs = m.data;
+    const prof = Object.fromEntries((p.data || []).map((x) => [x.id, x]));
+    const count = (rows) => (rows || []).reduce((o, r) => ((o[r.match_id] = (o[r.match_id] || 0) + 1), o), {});
+    const nImg = count(i.data), nPt = count(pt.data);
+    const taches = t.data || [];
+    const derniere = {}; for (const x of taches) if (!derniere[x.match_id]) derniere[x.match_id] = x;
+    const aPointer = matchs.filter((x) => x.etat === "a_pointer").length;
+    $("k-matchs").textContent = matchs.length;
+    $("k-matchs-d").textContent = matchs.filter((x) => x.etat === "termine").length + " terminés, " + matchs.filter((x) => x.etat === "erreur").length + " en erreur";
+    $("k-apointer").textContent = aPointer;
+    $("match-count").textContent = aPointer ? aPointer : "";
+    const pont = (w.data || [])[0];
+    const vivant = pont && Date.now() - new Date(pont.vu_le).getTime() < 60e3;
+    $("k-pont").textContent = vivant ? "En marche" : "Arrêté";
+    $("k-pont-d").textContent = pont ? pont.nom + " · vu " + short(pont.vu_le) : "jamais lancé (python pont_site.py ecouter)";
+    $("m-list").innerHTML = matchs.length ? matchs.map((x) => {
+      const c = prof[x.coach_id] || {}, d = derniere[x.id];
+      return `<tr class="m-row" data-id="${x.id}" style="cursor:pointer"><td>${esc(short(x.cree_le))}</td><td><b>${esc(x.titre)}</b>${x.dossier_moteur ? '<br><span class="muted adm-small">' + esc(x.dossier_moteur) + "</span>" : ""}</td>
+        <td>${esc(c.nom || "")}${c.club ? " · " + esc(c.club) : ""}<br><span class="muted adm-small">${esc(c.email || "")}</span></td>
+        <td>${esc(ETAT_M[x.etat] || x.etat)}${x.message ? '<br><span class="muted adm-small">' + esc(x.message) + "</span>" : ""}</td>
+        <td>${nPt[x.id] || 0} / ${nImg[x.id] || 0}</td>
+        <td>${d ? esc(TYPE_T[d.type] || d.type) + " · " + esc(ETAT_T[d.etat] || d.etat) + '<br><span class="muted adm-small">' + esc(short(d.cree_le)) + "</span>" : "–"}</td></tr>`;
+    }).join("") : "<tr><td colspan='6' class='muted'>Aucun match pour l'instant.</td></tr>";
+    document.querySelectorAll(".m-row").forEach((r) => r.addEventListener("click", () => { openMatch = r.dataset.id; detailMatch(taches); }));
+    if (openMatch) detailMatch(taches);
+  }
+  function detailMatch(taches) {
+    const x = matchs.find((m) => m.id === openMatch);
+    if (!x) { $("m-detail").innerHTML = ""; return; }
+    const ts = taches.filter((t) => t.match_id === x.id);
+    const parType = {}; for (const t of ts) parType[t.type] = (parType[t.type] || 0) + 1;
+    const dur = (t) => (t.debut && t.fin ? ((new Date(t.fin) - new Date(t.debut)) / 1000).toFixed(1) + " s" : "");
+    $("m-detail").innerHTML = `<h2 class="adm-h2">Journal : ${esc(x.titre)}</h2>
+      <p class="muted adm-small">${Object.entries(parType).map(([k, n]) => esc(TYPE_T[k] || k) + " : " + n).join(" · ") || "aucune tâche"} — <a href="/app/pointage?match=${x.id}">ouvrir la page de pointage</a></p>
+      <div class="adm-scroll" style="margin-top:12px"><table class="adm-table"><thead><tr><th>Demandée le</th><th>Tâche</th><th>État</th><th>Durée</th><th>Par</th><th>Message</th></tr></thead><tbody>
+      ${ts.slice(0, 60).map((t) => `<tr><td>${esc(short(t.cree_le))}</td><td>${esc(TYPE_T[t.type] || t.type)}</td><td>${esc(ETAT_T[t.etat] || t.etat)}</td><td>${dur(t)}</td><td>${esc(t.travailleur || "")}</td><td class="adm-small">${esc(t.message || "")}</td></tr>`).join("")}
+      </tbody></table></div>`;
+  }
+  $("m-refresh").addEventListener("click", loadMatchs);
 
   // ----- Prospection -----
   let outreach = [], waitlist = [], contacts = [], prFilter = "all", editingOut = null;
@@ -791,7 +863,7 @@ body{background:var(--bg)}
   }
 
   // ----- Onglets (mémorisés dans l'adresse : #depenses, #recettes, #taches, #reussi) -----
-  const TABS = ["depenses", "recettes", "taches", "reussi", "etapes", "prospection"];
+  const TABS = ["depenses", "recettes", "taches", "reussi", "etapes", "matchs", "prospection"];
   function showTab(name) {
     if (!TABS.includes(name)) name = "depenses";
     for (const t of TABS) {

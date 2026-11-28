@@ -1,0 +1,981 @@
+<!doctype html>
+<!-- FICHIER GÉNÉRÉ par tools/porter_pointage.py depuis ciprio-lab/annot_modeles/index.html : ne pas modifier ici. -->
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex,nofollow">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Réglage du terrain · Ciprio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Style ciprio.ai : sobre et technique, filets fins, typo Geist, l'image du match dans un panneau sombre */
+:root{--bg:#fafaf9;--surface:#fff;--ink:#0b0d0c;--ink-2:#3a403d;--muted:#6b736f;--line:#e5e7e5;--accent:#12a150;--bad:#e5484d;--sel:#f5a524;--calc:#ff8a00;
+  --dark:#0c100e;--dark-2:#141a17;--dark-line:rgba(255,255,255,.1);--dark-muted:#8b948f;--dark-ink:#e9eeeb;
+  --f-sans:"Geist","Helvetica Neue",Arial,sans-serif;--f-mono:"Geist Mono",ui-monospace,Consolas,monospace;color-scheme:light}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html.en .fr,html:not(.en) .en{display:none!important}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 var(--f-sans);-webkit-font-smoothing:antialiased;min-height:100vh}
+h1,h2,h3{margin:0;font-weight:600;letter-spacing:-.03em;line-height:1.08}
+p{margin:0}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+.label{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.grow{flex:1}
+
+/* boutons (ceux du site) */
+button{font:500 .86rem/1 var(--f-sans);height:36px;padding:0 14px;border-radius:6px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer;white-space:nowrap;transition:background .15s,border-color .15s,color .15s}
+button:hover{border-color:var(--ink)}
+button.ink,.btn-ink{background:var(--ink);color:#fff;border-color:var(--ink)}
+button.ink:hover{background:#262b29}
+button.ok{background:var(--accent);color:#fff;border-color:var(--accent)}
+button.warn{color:var(--bad)}
+button:disabled{opacity:.4;cursor:default}
+button:disabled:hover{border-color:var(--line)}
+
+/* en-tête */
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding:0 20px;min-height:60px;
+  background:color-mix(in srgb,var(--surface) 92%,transparent);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;color:var(--ink);text-decoration:none}
+.brand svg{width:26px;height:26px;flex:none}
+.brand b{font-weight:600;font-size:1.06rem;letter-spacing:-.035em}
+.sep{width:1px;height:18px;background:var(--line)}
+.steps{display:flex;gap:4px}
+.steps i{width:22px;height:4px;border-radius:2px;background:var(--line)}
+.steps i.done{background:var(--accent)}
+.steps i.cur{background:var(--ink)}
+#pos{font-family:var(--f-mono);font-size:.74rem;color:var(--muted)}
+.lang{display:flex;gap:0;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.lang button{height:28px;padding:0 9px;border:0;border-radius:0;font:500 .7rem/1 var(--f-mono);letter-spacing:.06em;color:var(--muted);background:transparent}
+.lang button[aria-pressed="true"]{background:var(--ink);color:#fff}
+#annonce{margin:14px 20px 0;padding:12px 16px;border:1px solid var(--line);border-left:3px solid var(--calc);border-radius:6px;background:var(--surface);font-size:.92rem;color:var(--ink-2)}
+
+/* écrans d'accueil et de fin */
+.intro{max-width:760px;margin:8vh auto;padding:0 24px}
+.intro .label{color:var(--accent)}
+.intro h1{font-size:clamp(2rem,4.4vw,3.1rem);letter-spacing:-.045em;line-height:1;margin:14px 0 18px}
+.intro .lead{font-size:1.1rem;color:var(--ink-2);max-width:58ch}
+.intro ol{list-style:none;counter-reset:s;margin:28px 0;padding:0;border-top:1px solid var(--line)}
+.intro ol li{counter-increment:s;display:grid;grid-template-columns:44px 1fr;gap:8px;padding:14px 0;border-bottom:1px solid var(--line);color:var(--ink-2)}
+.intro ol li::before{content:counter(s,decimal-leading-zero);font-family:var(--f-mono);font-size:.78rem;color:var(--muted);padding-top:2px}
+.intro ol b{color:var(--ink)}
+.intro .meta{display:flex;gap:20px;flex-wrap:wrap;margin-top:22px}
+.intro .meta span{font-family:var(--f-mono);font-size:.74rem;color:var(--muted)}
+.intro button{height:44px;padding:0 22px;font-size:.94rem}
+
+/* travail : image + barre horizontale à gauche, schéma et aide à droite */
+main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;padding:16px 20px 20px;align-items:start}
+.col{min-width:0}
+.board{background:var(--dark);border:1px solid var(--dark);border-radius:10px 10px 0 0;padding:10px;display:flex;justify-content:center}
+.wrap{position:relative;display:inline-block;max-width:100%;line-height:0}
+.wrap img{display:block;max-width:100%;max-height:max(240px,calc(100vh - 140px - var(--dock-h,170px)));min-height:240px;width:auto;height:auto;user-select:none;-webkit-user-drag:none;border-radius:4px}
+canvas#cv{position:absolute;inset:0;width:100%;height:100%;cursor:crosshair}
+canvas#cv.grab{cursor:grab}
+canvas#loupe{position:absolute;right:10px;bottom:10px;width:160px;height:160px;border-radius:8px;border:1px solid rgba(255,255,255,.7);box-shadow:0 8px 24px rgba(0,0,0,.45);pointer-events:none;display:none}
+
+/* la barre : quel repère pointer, la liste de l'image, les actions — toujours visible sous l'image */
+.dock{position:sticky;bottom:0;z-index:4;background:var(--dark);color:var(--dark-ink);border:1px solid var(--dark);border-top:1px solid var(--dark-line);border-radius:0 0 10px 10px;
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 16px;padding:12px 14px;align-items:center}
+.dock .label{color:var(--dark-muted)}
+.dock-now{display:flex;align-items:baseline;gap:4px 14px;flex-wrap:wrap;min-width:0}
+.dock-now b{font-size:1.05rem;font-weight:600;letter-spacing:-.01em;line-height:1.25;color:var(--sel)}
+.dock-now b.fini{color:var(--accent)}
+.dock-now .mono{font-size:.74rem;color:var(--dark-muted)}
+.dock-list{grid-column:1/-1;min-width:0}
+.dock-list:empty{display:none}
+.dock-list h3{font-size:.8rem;font-weight:500;letter-spacing:0;color:var(--dark-ink);margin:0 0 6px}
+.dock-list .sub{font-size:.78rem;color:var(--dark-muted);margin:0 0 8px}
+.dock-now{grid-row:1;grid-column:1}
+.dock-act{grid-row:1;grid-column:2;display:flex;gap:6px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.dock button{background:transparent;color:var(--dark-ink);border-color:var(--dark-line)}
+.dock button:hover{border-color:rgba(255,255,255,.4)}
+.dock button.ink{background:var(--dark-ink);color:var(--dark);border-color:var(--dark-ink)}
+.dock button.ink:hover{background:#fff}
+.dock button.go-on{background:var(--accent);border-color:var(--accent);color:#fff;box-shadow:0 0 0 0 rgba(18,161,80,.6);animation:pulse 1.6s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(18,161,80,0)}100%{box-shadow:0 0 0 0 rgba(18,161,80,0)}}
+@media (prefers-reduced-motion:reduce){.dock button.go-on{animation:none}}
+.dock button:disabled{opacity:.35}
+.dock button:disabled:hover{border-color:var(--dark-line)}
+#calcbtn{color:#ffb466;border-color:rgba(255,138,0,.35)}
+.check{grid-column:1/-1;border-top:1px solid var(--dark-line);padding-top:8px;font-size:.82rem;color:var(--dark-muted)}
+.check:empty{display:none}
+.check b{color:var(--dark-ink);font-weight:600}
+.check.bad{color:#ff9b9e}.check.bad b{color:#ffc2c4}
+.check.busy{color:var(--dark-muted);font-style:italic}
+.check.badnote{color:#ffd27a}
+
+/* liste des repères de l'image, à l'horizontale */
+.marks{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.marks li.pick[data-a]{cursor:pointer}
+.marks li.pick[data-a]:hover{border-color:rgba(255,255,255,.35)}
+.marks li{display:flex;align-items:center;gap:8px;padding:5px 9px 5px 6px;border:1px solid var(--dark-line);border-radius:6px;background:var(--dark-2);font-size:.8rem;line-height:1.2;min-width:0}
+.marks li .n{flex:none;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font:500 .66rem/1 var(--f-mono);background:rgba(255,255,255,.08);color:var(--dark-muted)}
+.marks li .nm{min-width:0}
+.marks li .nm small{display:block;font-size:.68rem;color:#ffb466;margin-top:2px}
+.marks li.cur{border-color:var(--sel);background:rgba(245,165,36,.1)}
+.marks li.cur .n{background:var(--sel);color:var(--dark)}
+.marks li.done{border-color:rgba(18,161,80,.45)}
+.marks li.done .n{background:var(--accent);color:#fff}
+.marks li.done .nm{color:var(--dark-muted)}
+.marks li.calc{border-color:rgba(255,138,0,.45)}
+.marks li.calc .n{background:var(--calc);color:var(--dark)}
+.marks li.skip{opacity:.5}
+.marks li.skip .nm{text-decoration:line-through}
+.marks .act{display:flex;gap:3px}
+.marks .act button{height:24px;padding:0 8px;font-size:.7rem;border-radius:5px}
+.marks .act button.go{background:var(--dark-ink);color:var(--dark);border-color:var(--dark-ink)}
+.marks .act button[data-a="calc"]{color:#ffb466;border-color:rgba(255,138,0,.3)}
+
+/* colonne de droite */
+aside{display:grid;gap:14px;align-content:start;position:sticky;top:76px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px}
+.panel>.label{display:block;margin-bottom:10px}
+svg#pitch{width:100%;height:auto;background:var(--dark);border-radius:6px;display:block}
+svg .ln{fill:none;stroke:rgba(255,255,255,.55);stroke-width:.4}
+svg .pt{cursor:pointer;stroke:var(--dark);stroke-width:.35}
+.seg{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden;margin:2px 0 8px}
+.seg button{flex:1;height:32px;border:0;border-radius:0;font-size:.78rem;padding:0 6px}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button.on{background:var(--ink);color:#fff}
+.small{font-size:.78rem;color:var(--muted)}
+#badimg{width:100%;margin-top:8px;font-size:.78rem;height:auto;min-height:34px;padding:8px 10px;white-space:normal;line-height:1.3}
+.row{display:flex;gap:6px;flex-wrap:wrap}
+.row button{flex:1;font-size:.76rem;height:32px;padding:0 8px}
+.help{font-size:.8rem;color:var(--ink-2);display:grid;gap:8px}
+.help b{color:var(--ink)}
+.help .o{color:var(--calc);font-weight:600}
+@media (max-width:1000px){main{grid-template-columns:1fr}aside{position:static;grid-template-columns:1fr 1fr}}
+@media (max-width:760px){.dock{grid-template-columns:1fr}.dock-act{grid-row:auto;grid-column:1;justify-content:flex-start}aside{grid-template-columns:1fr}header{padding:8px 16px}main{padding:12px 16px}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="logo" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#0b0d0c"/>
+  <g fill="none" stroke="#fafaf9" stroke-width="0.9" stroke-linejoin="round"><rect x="5" y="13" width="54" height="38" rx="2"/><path d="M5 23 H13 V41 H5"/><path d="M59 23 H51 V41 H59"/><path d="M5 27.4 H7.9 V36.6 H5"/><path d="M59 27.4 H56.1 V36.6 H59"/><path d="M32 13 V22.6 M32 41.4 V51"/></g>
+  <path d="M38.65 25.35 A9.4 9.4 0 1 0 38.65 38.65" fill="none" stroke="#fafaf9" stroke-width="3.2" stroke-linecap="round"/></symbol></svg>
+<header>
+  <span class="brand"><svg><use href="#logo"/></svg><b>Ciprio</b></span>
+  <span class="sep"></span>
+  <span class="label"><span class="fr">Réglage du terrain · étape 4 sur 6</span><span class="en">Pitch setup · step 4 of 6</span></span>
+  <span class="steps" id="steps" hidden></span>
+  <span id="pos" hidden></span>
+  <span class="grow"></span>
+  <div class="lang" role="group" aria-label="Langue / Language"><button type="button" data-lang="fr">FR</button><button type="button" data-lang="en">EN</button></div>
+  <button id="prev" hidden>←</button>
+  <button class="ink" id="next" hidden>→</button>
+</header>
+<div id="annonce" hidden></div>
+
+<section class="intro" id="intro">
+  <p class="label"><span class="fr">Étape 4 sur 6 · Réglage du terrain</span><span class="en">Step 4 of 6 · Pitch setup</span></p>
+  <h1><span class="fr">Réglons votre terrain.</span><span class="en">Let's set up your pitch.</span></h1>
+  <p class="lead"><span class="fr">Pour analyser vos matchs au mètre près, Ciprio doit savoir exactement où sont les lignes de votre terrain. Vous ne le faites <b>qu'une fois par terrain</b> : Ciprio le garde pour vos prochains matchs, tant que la caméra reste à la même place.</span><span class="en">To analyse your matches to the metre, Ciprio needs to know exactly where the lines of your pitch are. You only do this <b>once per ground</b>: Ciprio keeps your pitch for your next matches, as long as the camera stays in the same place.</span></p>
+  <ol>
+    <li><span><span class="fr">Sous chaque image, la barre vous dit <b>quel repère cliquer</b> et combien il en reste. Seulement ceux-là : quand la liste est finie, image suivante.</span><span class="en">Under each image, the bar tells you <b>which marking to click</b> and how many are left. Only those: when the list is done, next image.</span></span></li>
+    <li><span><span class="fr"><b>Cliquez exactement sur le repère.</b> Une loupe vous aide à viser. Pour déplacer un point, faites-le glisser.</span><span class="en"><b>Click exactly on the marking.</b> A magnifier helps you aim. To move a point, drag it.</span></span></li>
+    <li><span><span class="fr">Vous ne pouvez pas pointer un repère (trop loin, flou, caché) ? <b>« Je ne peux pas »</b> : Ciprio le place pour vous, en orange, à la fin.</span><span class="en">Can't point a marking (too far, blurry, hidden)? <b>"I can't"</b>: Ciprio places it for you, in orange, at the end.</span></span></li>
+  </ol>
+  <button class="ink" id="start"><span class="fr">Commencer →</span><span class="en">Start →</span></button>
+  <div class="meta"><span id="intro-n"></span><span class="fr">≈ 2 minutes</span><span class="en">≈ 2 minutes</span><span class="fr">Enregistré automatiquement</span><span class="en">Saved automatically</span></div>
+</section>
+
+<main id="work" hidden>
+  <div class="col">
+    <div class="board">
+      <div class="wrap">
+        <img id="img" alt="Image du match">
+        <canvas id="cv"></canvas>
+        <canvas id="loupe" width="160" height="160"></canvas>
+      </div>
+    </div>
+    <div class="dock" id="dock">
+      <div class="dock-now"><span class="label"><span class="fr">À pointer</span><span class="en">To point</span></span><b id="cur">–</b><span class="mono" id="left"></span></div>
+      <div class="dock-list" id="hint"></div>
+      <div class="dock-act">
+        <button id="calcbtn"><span class="fr">Je ne peux pas le pointer</span><span class="en">I can't point it</span></button>
+        <button id="prev2" aria-label="Image précédente">←</button>
+        <b id="pos2" class="mono" style="font-size:.74rem;color:var(--dark-muted);font-weight:400"></b>
+        <button class="ink" id="next2">→</button>
+      </div>
+      <div class="check" id="check"></div>
+    </div>
+  </div>
+  <aside>
+    <div class="panel">
+      <span class="label"><span class="fr">Schéma du terrain</span><span class="en">Pitch diagram</span></span>
+      <svg viewBox="-4 -4 113 77" id="pitch" aria-label="Schéma du terrain : cliquez un repère pour le choisir"></svg>
+      <p class="small" style="margin-top:8px"><span class="fr">Vous voyez un autre repère ? Cliquez-le ici, puis sur l'image.</span><span class="en">You see another marking? Click it here, then on the image.</span></p>
+    </div>
+    <div class="panel zonebox" id="zonebox">
+      <span class="label"><span class="fr">Cette image montre</span><span class="en">This image shows</span></span>
+      <div class="seg"><button data-z="L"><span class="fr">Côté gauche</span><span class="en">Left end</span></button><button data-z="C"><span class="fr">Milieu</span><span class="en">Middle</span></button><button data-z="R"><span class="fr">Côté droit</span><span class="en">Right end</span></button></div>
+      <p class="small"><span class="fr">Gauche et droite vus depuis la caméra.</span><span class="en">Left and right as seen from the camera.</span></p>
+      <button id="badimg" class="warn"></button>
+    </div>
+    <div class="panel">
+      <div class="row">
+        <button id="snap" hidden><span class="fr">Recaler</span><span class="en">Snap</span></button>
+        <button id="del" class="warn"><span class="fr">Effacer le point</span><span class="en">Delete point</span></button>
+        <button id="clear" class="warn"><span class="fr">Vider l'image</span><span class="en">Clear image</span></button>
+      </div>
+    </div>
+    <div class="panel help">
+      <span class="label"><span class="fr">Aide</span><span class="en">Help</span></span>
+      <p><span class="fr"><b>Déplacer un point :</b> faites-le glisser. <b>L'effacer :</b> clic droit dessus, ou touche Suppr.</span><span class="en"><b>Move a point:</b> drag it. <b>Delete it:</b> right-click it, or press Delete.</span></p>
+      <p><span class="fr">« Fond » = la touche loin de la caméra · « près » = côté caméra.</span><span class="en">"Far" = the touchline away from the camera · "near" = the camera side.</span></p>
+      <p><span class="fr"><b>Repère impossible à pointer ?</b> « Je ne peux pas le pointer » : Ciprio le place en <span class="o">orange</span> à partir de vos autres points. S'il est mal placé, faites-le glisser : il devient le vôtre.</span><span class="en"><b>Can't point a marking?</b> "I can't point it": Ciprio places it in <span class="o">orange</span> from your other points. If it's off, drag it: it becomes yours.</span></p>
+      <p><span class="fr">Les flèches ← → du clavier changent d'image. Tout est enregistré automatiquement.</span><span class="en">The ← → keys change image. Everything is saved automatically.</span></p>
+    </div>
+  </aside>
+</main>
+
+<section class="intro" id="end" hidden>
+  <p class="label"><span class="fr">Terminé</span><span class="en">Done</span></p>
+  <h1><span class="fr">Merci, c'est fini ✓</span><span class="en">Thank you, all done ✓</span></h1>
+  <p class="lead" id="endp"><span class="fr">Votre terrain est réglé. Ciprio s'occupe du reste : vous pouvez fermer cette page.</span><span class="en">Your pitch is set up. Ciprio takes it from here: you can close this page.</span></p>
+  <div class="meta" style="margin-top:28px"><button id="back"><span class="fr">Revoir mes images</span><span class="en">Review my images</span></button></div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/assets/app/commun.js"></script>
+<script>window.CIPRIO_BORD_BAS_14 = 0.99;</script>
+<script src="/assets/app/pointage-pont.js"></script>
+<script>
+(async () => {
+  const $ = (id) => document.getElementById(id);
+  // ---------- langue : français / anglais (choix gardé dans le navigateur) ----------
+  let LANG = (() => { try { return localStorage.getItem("ciprio-lang"); } catch { return null; } })() || ((navigator.language || "fr").toLowerCase().startsWith("fr") ? "fr" : "en");
+  const T = (en, fr) => (LANG === "fr" ? fr : en);
+  const setLang = (l) => {
+    LANG = l; document.documentElement.classList.toggle("en", l === "en"); document.documentElement.lang = l;
+    document.querySelectorAll(".lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === l)));
+    try { localStorage.setItem("ciprio-lang", l); } catch {}
+  };
+  setLang(LANG);
+  new ResizeObserver(([e]) => document.documentElement.style.setProperty("--dock-h", Math.ceil(e.contentRect.height + 26) + "px")).observe(document.getElementById("dock"));
+  // ---------- repères (mêmes positions que pitch_points.py) ----------
+  const side = (S) => [`${S} corner, far`, `${S} corner, near`, `${S} box: goal line, far`, `${S} box: goal line, near`, `${S} box: corner, far`, `${S} box: corner, near`,
+    `${S} 6-yard box: goal line, far`, `${S} 6-yard box: goal line, near`, `${S} 6-yard box: corner, far`, `${S} 6-yard box: corner, near`, `${S} penalty spot`, `${S} arc: far`, `${S} arc: near`];
+  const NAMES = [...side("Left"), "Halfway line: far touchline", "Halfway line: near touchline", "Centre spot", "Centre circle: far", "Centre circle: near", "Centre circle: left", "Centre circle: right", ...side("Right"), "Halfway line: lowest visible point"];
+  // noms affichés en français (les noms anglais restent les identifiants internes)
+  const sideFR = (S) => [`Coin ${S}, fond`, `Coin ${S}, près`, `Surface ${S} : ligne de but, fond`, `Surface ${S} : ligne de but, près`, `Surface ${S} : angle, fond`, `Surface ${S} : angle, près`,
+    `Petite surface ${S} : ligne de but, fond`, `Petite surface ${S} : ligne de but, près`, `Petite surface ${S} : angle, fond`, `Petite surface ${S} : angle, près`, `Point de penalty ${S}`, `Arc ${S} : fond`, `Arc ${S} : près`];
+  const NAMES_FR = [...sideFR("gauche"), "Médiane : touche du fond", "Médiane : touche côté caméra", "Point central", "Rond central : fond", "Rond central : près", "Rond central : gauche", "Rond central : droite", ...sideFR("droite"), "Médiane : point le plus bas visible"];
+  const DK = (k) => (LANG === "fr" ? NAMES_FR[k] : NAMES[k]) || "";
+  const DN = (n) => DK(NAMES.indexOf(n));
+  const LNAME_FR = { touch_near: "Touche côté caméra", touch_far: "Touche du fond", halfway: "Ligne médiane", goal_L: "Ligne de but gauche", goal_R: "Ligne de but droite",
+    box_L_front: "Surface gauche : ligne avant", box_R_front: "Surface droite : ligne avant", box_L_near: "Surface gauche : côté caméra", box_R_near: "Surface droite : côté caméra",
+    box_L_far: "Surface gauche : côté fond", box_R_far: "Surface droite : côté fond" };
+  const LN = (id) => (LANG === "fr" ? LNAME_FR[id] : lineDef(id).name);
+  const PBW = 40.32, GBW = 18.32, ARC = Math.sqrt(9.15 ** 2 - 5.5 ** 2);
+  function landmarks(L, W) {
+    const cy = W / 2;
+    const left = [[0, 0], [0, W], [0, cy - PBW / 2], [0, cy + PBW / 2], [16.5, cy - PBW / 2], [16.5, cy + PBW / 2], [0, cy - GBW / 2], [0, cy + GBW / 2], [5.5, cy - GBW / 2], [5.5, cy + GBW / 2], [11, cy], [16.5, cy - ARC], [16.5, cy + ARC]];
+    const mid = [[L / 2, 0], [L / 2, W], [L / 2, cy], [L / 2, cy - 9.15], [L / 2, cy + 9.15], [L / 2 - 9.15, cy], [L / 2 + 9.15, cy]];
+    return [...left, ...mid, ...left.map(([x, y]) => [L - x, y]), [L / 2, W - 3]];   // 33 : point bas de la médiane (place sur le schéma seulement)
+  }
+  // zone de chaque repère (gauche / centre / droite) et repères qui dépendent de la largeur du terrain
+  const ZONE = (i) => (i <= 12 ? "L" : i <= 19 ? "C" : "R");
+  const WDEP = new Set([0, 1, 13, 14, 20, 21]);   // coins et bouts de la ligne médiane : sur les lignes de touche
+  const FAR = new Set([0, 13, 20]), NEAR = new Set([1, 14, 21]);
+  const densify = (poly) => { const out = []; for (let i = 0; i < poly.length - 1; i++) { const n = Math.max(2, Math.ceil(Math.hypot(poly[i + 1][0] - poly[i][0], poly[i + 1][1] - poly[i][1]) / 0.5)); for (let k = 0; k < n; k++) { const f = k / n; out.push([poly[i][0] + f * (poly[i + 1][0] - poly[i][0]), poly[i][1] + f * (poly[i + 1][1] - poly[i][1])]); } } out.push(poly[poly.length - 1]); return out; };
+  // dessine uniquement ce que les repères placés permettent de connaître :
+  //  - les surfaces, l'arc, le point de penalty et le rond central ont des tailles officielles fixes ;
+  //  - les lignes de touche seulement si un coin ou un bout de la ligne médiane est placé ;
+  //  - tout le terrain d'un bout à l'autre seulement si des repères de deux zones différentes sont placés.
+  function segments(L, W, zones, far, near) {
+    const cy = W / 2, s = [], arcs = (x0, d) => { const a = []; for (let t = -0.93; t <= 0.931; t += 0.05) a.push([x0 + d * (11 + 9.15 * Math.cos(t)), cy + 9.15 * Math.sin(t)]); return a; };
+    const ring = (cx, r) => { const c = []; for (let t = 0; t <= Math.PI * 2 + 0.01; t += 0.05) c.push([cx + r * Math.cos(t), cy + r * Math.sin(t)]); return c; };
+    const y0 = far ? 0 : cy - PBW / 2 - 4, y1 = near ? W : cy + PBW / 2 + 4;   // jusqu'où tracer les lignes en travers du terrain
+    const touch = (xa, xb) => { if (far) s.push([[xa, 0], [xb, 0]]); if (near) s.push([[xa, W], [xb, W]]); };
+    for (const [z, x0, d] of [["L", 0, 1], ["R", L, -1]]) {
+      if (!zones.has(z)) continue;
+      s.push([[x0, cy - PBW / 2], [x0 + d * 16.5, cy - PBW / 2], [x0 + d * 16.5, cy + PBW / 2], [x0, cy + PBW / 2]]);
+      s.push([[x0, cy - GBW / 2], [x0 + d * 5.5, cy - GBW / 2], [x0 + d * 5.5, cy + GBW / 2], [x0, cy + GBW / 2]]);
+      s.push(arcs(x0, d), ring(x0 + d * 11, 0.25), [[x0, y0], [x0, y1]]);
+      touch(x0, x0 + d * 30);
+    }
+    if (zones.has("C")) {
+      s.push(ring(L / 2, 9.15), ring(L / 2, 0.25), [[L / 2, far ? 0 : cy - 15], [L / 2, near ? W : cy + 15]]);
+      touch(L / 2 - 30, L / 2 + 30);
+    }
+    if (zones.size >= 2) touch(0, L);
+    return s.map(densify);
+  }
+
+
+
+  // conseils par image : les repères les plus utiles, dans l'ordre
+  const BOX = (S) => ({ main: [`${S} box: goal line, far`, `${S} box: goal line, near`, `${S} box: corner, far`, `${S} box: corner, near`, `${S} penalty spot`],
+    alt: [`${S} 6-yard box: corner, far`, `${S} 6-yard box: corner, near`, `${S} 6-yard box: goal line, far`, `${S} 6-yard box: goal line, near`, `${S} arc: far`, `${S} arc: near`, `${S} corner, far`, `${S} corner, near`] });
+  const CENTRE = { main: ["Halfway line: far touchline", "Centre circle: left", "Centre circle: right", "Centre circle: near", "Centre spot"],
+    alt: ["Centre circle: far", "Halfway line: near touchline", "Left box: corner, far", "Right box: corner, far", "Left box: corner, near", "Right box: corner, near"] };
+  // une image par zone : à gauche les coins et la surface, au centre la médiane et le rond central, à droite pareil qu'à gauche
+  const END = (S) => ({ main: [`${S} corner, far`, `${S} corner, near`, `${S} box: goal line, far`, `${S} box: goal line, near`, `${S} box: corner, far`, `${S} box: corner, near`],
+    alt: [`${S} 6-yard box: corner, far`, `${S} 6-yard box: corner, near`, `${S} 6-yard box: goal line, far`, `${S} 6-yard box: goal line, near`, `${S} penalty spot`, `${S} arc: far`, `${S} arc: near`] });
+  const MIDDLE = { main: ["Halfway line: far touchline", "Halfway line: near touchline", "Centre circle: far", "Centre circle: near", "Centre circle: left", "Centre circle: right"],
+    alt: ["Centre spot"] };
+  // repères encore jamais pointés, sur une image où la caméra regarde vers eux (gauche 4:30, droite 10:00, centre 105:30, médiane côté caméra 114:30)
+  const ONLY = (names) => ({ main: names, alt: [] });
+  const HINTS = {
+    "t00270.jpg": ONLY(["Left corner, near", "Left box: goal line, far", "Left box: goal line, near", "Left box: corner, near", "Left 6-yard box: goal line, near", "Left 6-yard box: corner, near", "Left arc: far", "Left arc: near"]),
+    "t00600.jpg": ONLY(["Right corner, far", "Right box: goal line, far", "Right box: corner, far", "Right 6-yard box: goal line, far", "Right 6-yard box: goal line, near", "Right 6-yard box: corner, far", "Right 6-yard box: corner, near", "Right penalty spot"]),
+    "t06330.jpg": ONLY(["Centre spot"]),
+    "t06870.jpg": ONLY(["Halfway line: near touchline"]),
+    // côté droit de nuit (le côté droit n'avait été pointé que de jour, à 10:00) : vue large 89:30, zoom sur le but 71:30
+    "t05370.jpg": ONLY(["Right corner, far", "Right corner, near", "Right box: goal line, far", "Right box: goal line, near", "Right box: corner, far", "Right box: corner, near", "Right 6-yard box: goal line, far", "Right 6-yard box: goal line, near", "Right 6-yard box: corner, far", "Right 6-yard box: corner, near", "Right penalty spot", "Right arc: far", "Right arc: near"]),
+    "t04290.jpg": ONLY(["Right corner, far", "Right corner, near", "Right box: goal line, far", "Right box: goal line, near", "Right box: corner, far", "Right box: corner, near", "Right 6-yard box: goal line, far", "Right 6-yard box: goal line, near", "Right 6-yard box: corner, far", "Right 6-yard box: corner, near", "Right penalty spot", "Right arc: far", "Right arc: near"]),
+    "t06300.jpg": ONLY(["Left corner, near", "Left 6-yard box: goal line, near", "Left 6-yard box: corner, near"]),
+  };
+  // images de ce match : zone que montre chaque image (L gauche, C milieu, R droite) -> liste de repères à pointer, sans lignes ni terrain rose
+  // message au coach (ex. caméra déplacée pendant le match : il faut recaler le terrain)
+  fetch("annonce.json").then((r) => (r.ok ? r.json() : null)).then((a) => { if (a && a.text) { const el = document.getElementById("annonce"); el.textContent = a.text; el.hidden = false; } }).catch(() => {});
+  const ZH = await fetch("hints.json").then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  for (const [f, z] of Object.entries(ZH)) HINTS[f] = Array.isArray(z) ? ONLY(z) : z === "L" ? END("Left") : z === "R" ? END("Right") : MIDDLE;
+  const ZLIST = (z) => (z === "L" ? END("Left") : z === "R" ? END("Right") : MIDDLE);
+  let zone = {}, bad = false;
+  function zoneUI() {
+    const z = zone[list[idx]] || ZH[list[idx]];
+    document.querySelectorAll("#zonebox .seg button").forEach((b) => b.classList.toggle("on", b.dataset.z === z));
+    $("badimg").textContent = bad ? T("Undo: this image is usable after all", "Annuler : cette image est utilisable") : T("I can't see the lines on this image (sun, dark, blur…)", "Je ne vois pas les lignes sur cette image (soleil, nuit, flou…)");
+  }
+  // repères marqués « je ne le vois pas », par image (gardés dans le navigateur)
+  const skipped = (() => { try { return JSON.parse(localStorage.getItem("ciprio-skip") || "{}"); } catch { return {}; } })();
+  const keepSkipped = () => { try { localStorage.setItem("ciprio-skip", JSON.stringify(skipped)); } catch {} };
+
+
+  const LIST = await (await fetch("/api/list")).json();
+  // image de complément : on montre exactement les repères demandés (dont « point le plus bas visible »), rien d'autre
+  for (const x of LIST) if (x.ask) HINTS[x.name] = ONLY(x.ask.map((i) => NAMES[i]));
+  const list = LIST.map((x) => x.name);
+  // MINI-POINTAGE (fondateur, 15/11/2026) : pas de liste imposée ; une palette des lignes de la zone, le coach choisit
+  // une ligne QU'IL VOIT et clique 2 points dessus ; rien à « passer », rien à deviner
+  const MINI = {}; for (const x of LIST) if (x.mini) MINI[x.name] = x.mini;
+  const MINI_LINES = { L: ["touch_far", "goal_L", "box_L_front", "box_L_far", "box_L_near", "touch_near", "halfway"],
+                       R: ["touch_far", "goal_R", "box_R_front", "box_R_far", "box_R_near", "touch_near", "halfway"],
+                       C: ["halfway", "touch_far", "touch_near"] };
+  const MINI_PTS = { C: ["Halfway line: far touchline", "Centre spot", "Centre circle: far", "Centre circle: near", "Centre circle: left", "Centre circle: right"], L: [], R: [] };
+  // dimensions mesurées du terrain (satellite / photo aérienne) : si elles sont connues, on ne les cherche plus
+  const FIXED = await fetch("stade_mesure.json").then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  let L = FIXED ? FIXED.length_m : 105, W = FIXED ? FIXED.width_m : 68, LM = landmarks(L, W), SEGS = [];
+  let calc = {}, calcLines = [], calcSeq = 0, fromCalc = false, REVIEW = false, places = [], AREVOIR = [];
+  let idx = 0, pts = {}, lines = {}, selLine = null, sel = 0, drag = null, lineDrag = null, H = null, manual = false, snapSeq = 0, saveT = null;
+  const img = $("img"), cv = $("cv"), ctx = cv.getContext("2d"), lp = $("loupe"), lctx = lp.getContext("2d");
+  const introN = () => { $("intro-n").textContent = T(`${list.length} images`, `${list.length} images`); };
+  introN();
+
+  // ---------- homographie terrain (m) -> image (px), moindres carrés normalisés ----------
+  function solve(A, b) {
+    const n = b.length;
+    for (let i = 0; i < n; i++) {
+      let p = i; for (let r = i + 1; r < n; r++) if (Math.abs(A[r][i]) > Math.abs(A[p][i])) p = r;
+      [A[i], A[p]] = [A[p], A[i]]; [b[i], b[p]] = [b[p], b[i]];
+      if (Math.abs(A[i][i]) < 1e-12) return null;
+      for (let r = i + 1; r < n; r++) { const f = A[r][i] / A[i][i]; for (let c = i; c < n; c++) A[r][c] -= f * A[i][c]; b[r] -= f * b[i]; }
+    }
+    const x = new Array(n);
+    for (let i = n - 1; i >= 0; i--) { let s = b[i]; for (let c = i + 1; c < n; c++) s -= A[i][c] * x[c]; x[i] = s / A[i][i]; }
+    return x;
+  }
+  const mul = (A, B) => A.map((r) => B[0].map((_, j) => r.reduce((s, v, k) => s + v * B[k][j], 0)));
+  function norm(P) { const m = P.reduce((a, p) => [a[0] + p[0] / P.length, a[1] + p[1] / P.length], [0, 0]); const d = P.reduce((a, p) => a + Math.hypot(p[0] - m[0], p[1] - m[1]), 0) / P.length || 1; const s = Math.SQRT2 / d; return [[s, 0, -s * m[0]], [0, s, -s * m[1]], [0, 0, 1]]; }
+  function inv3(M) { const [a, b, c] = M[0], [d, e, f] = M[1], [g, h, i] = M[2]; const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g, D = a * A + b * B + c * C; return [[A / D, -(b * i - c * h) / D, (b * f - c * e) / D], [B / D, (a * i - c * g) / D, -(a * f - c * d) / D], [C / D, -(a * h - b * g) / D, (a * e - b * d) / D]]; }
+  const tf = (M, [x, y]) => { const z = M[2][0] * x + M[2][1] * y + M[2][2]; return [(M[0][0] * x + M[0][1] * y + M[0][2]) / z, (M[1][0] * x + M[1][1] * y + M[1][2]) / z, z]; };
+  function homography(src, dst) {
+    const Ts = norm(src), Td = norm(dst);
+    const s = src.map((p) => tf(Ts, p)), d = dst.map((p) => tf(Td, p));
+    const M = Array.from({ length: 8 }, () => new Array(8).fill(0)), v = new Array(8).fill(0);
+    s.forEach(([x, y], i) => { const [u, w] = d[i]; for (const [row, rhs] of [[[x, y, 1, 0, 0, 0, -u * x, -u * y], u], [[0, 0, 0, x, y, 1, -w * x, -w * y], w]]) for (let a = 0; a < 8; a++) { v[a] += row[a] * rhs; for (let c = 0; c < 8; c++) M[a][c] += row[a] * row[c]; } });
+    const h = solve(M, v); if (!h) return null;
+    const Hn = [[h[0], h[1], h[2]], [h[3], h[4], h[5]], [h[6], h[7], 1]];
+    const R = mul(inv3(Td), mul(Hn, Ts)); const k = R[2][2]; return R.map((r) => r.map((x) => x / k));
+  }
+  const px = (v) => [v[0] * cv.width, v[1] * cv.height];
+
+  // géométrie des repères : il faut qu'ils forment une grande forme, pas une ligne
+  function spread(ks) {
+    const P = ks.map((k) => px(pts[k]));
+    const m = P.reduce((a, p) => [a[0] + p[0] / P.length, a[1] + p[1] / P.length], [0, 0]);
+    let sxx = 0, syy = 0, sxy = 0; P.forEach(([x, y]) => { sxx += (x - m[0]) ** 2; syy += (y - m[1]) ** 2; sxy += (x - m[0]) * (y - m[1]); });
+    const tr = sxx + syy, det = sxx * syy - sxy * sxy, l2 = tr / 2 - Math.sqrt(Math.max(0, tr * tr / 4 - det));
+    return Math.sqrt(Math.max(0, l2) / P.length);   // épaisseur de la forme, en pixels
+  }
+
+  // ---------- dessin ----------
+  const svgNS = "http://www.w3.org/2000/svg";
+  function drawPitch() {
+    const s = $("pitch");
+    s.innerHTML = `<rect class="ln" x="0" y="0" width="105" height="68"/><line class="ln" x1="52.5" y1="0" x2="52.5" y2="68"/>
+      <circle class="ln" cx="52.5" cy="34" r="9.15"/>
+      <rect class="ln" x="0" y="13.84" width="16.5" height="40.32"/><rect class="ln" x="88.5" y="13.84" width="16.5" height="40.32"/>
+      <rect class="ln" x="0" y="24.84" width="5.5" height="18.32"/><rect class="ln" x="99.5" y="24.84" width="5.5" height="18.32"/>
+      <path class="ln" d="M16.5 26.69 A9.15 9.15 0 0 1 16.5 41.31"/><path class="ln" d="M88.5 26.69 A9.15 9.15 0 0 0 88.5 41.31"/>
+      <text x="52.5" y="71.4" fill="#fff" font-size="2.6" text-anchor="middle" opacity=".85">${T("camera side", "côté caméra")}</text>`;
+    landmarks(105, 68).forEach(([x, y], i) => {
+      const c = document.createElementNS(svgNS, "circle");
+      c.setAttribute("cx", x); c.setAttribute("cy", y); c.setAttribute("r", i === sel ? 2.2 : 1.4); c.setAttribute("class", "pt");
+      c.setAttribute("fill", i === sel ? "#f5a524" : pts[i] ? "#12a150" : calc[i] !== undefined ? "#ff8a00" : "rgba(255,255,255,.45)");
+      const t = document.createElementNS(svgNS, "title"); t.textContent = DK(i); c.appendChild(t);
+      c.addEventListener("click", () => { sel = i; selLine = null; render(); hint(); });
+      s.appendChild(c);
+    });
+    // lignes : celle à cliquer en orange, celles déjà faites en bleu
+    for (const [id, a] of [...Object.entries(lines).filter(([, a]) => a.length === 2), ...(selLine ? [[selLine, null]] : [])]) {
+      const [[x1, y1], [x2, y2]] = lineEnds(lineDef(id)), ln = document.createElementNS(svgNS, "line");
+      Object.entries({ x1, y1, x2, y2, stroke: a ? "#00e5ff" : "#f5a524", "stroke-width": a ? 1.2 : 1.8, "stroke-linecap": "round" }).forEach(([k, v]) => ln.setAttribute(k, v));
+      s.insertBefore(ln, s.firstChild.nextSibling);
+    }
+  }
+  function drawLines() {
+    if (!H) return;
+    ctx.strokeStyle = "rgba(255,0,200,.92)"; ctx.lineWidth = 2.5;
+    for (const seg of SEGS) {
+      ctx.beginPath(); let pen = false;
+      for (const p of seg) { const [u, v, z] = tf(H, p); if (z <= 0 || Math.abs(u) > 8000 || Math.abs(v) > 8000) { pen = false; continue; } pen ? ctx.lineTo(u, v) : ctx.moveTo(u, v); pen = true; }
+      ctx.stroke();
+    }
+  }
+  // dès que deux repères placés sont sur la même ligne du terrain, on trace cette ligne tout de suite (en cyan),
+  // sans attendre 4 repères ; si un troisième repère de cette ligne n'est pas aligné, il est signalé en rouge
+  // lignes du terrain qui passent par au moins deux repères : « x » = parallèles aux lignes de but, « y » = parallèles aux touches
+  // (y = 34 exclu : le point de penalty et le centre ne sont reliés par aucune ligne peinte)
+  const ON_LINE = (() => {
+    const lm = landmarks(105, 68), g = {};
+    const painted = (y) => y !== 34 && Math.abs(Math.abs(y - 34) - ARC) > 0.01;   // pas de ligne peinte à hauteur des points de l'arc
+    lm.forEach(([x, y], i) => { (g["x" + x] = g["x" + x] || { o: "x", ks: [] }).ks.push(i); if (painted(y)) (g["y" + y] = g["y" + y] || { o: "y", ks: [] }).ks.push(i); });
+    return Object.values(g);
+  })();
+  // ---------- lignes cliquées : 2 points n'importe où sur une ligne visible ----------
+  // o = sens de la ligne (x : parallèle aux lignes de but, y : parallèle aux touches) ; v = sa position sur le terrain (m)
+  const LINE_IDS = ["touch_near", "halfway", "goal_R", "goal_L", "touch_far", "box_R_front", "box_L_front", "box_R_near", "box_L_near", "box_R_far", "box_L_far"];
+  function lineDef(id) {
+    const cy = W / 2, b = 20.16;
+    return {
+      touch_near: { o: "y", v: W, name: "Touchline, camera side", zone: null, x0: 0, x1: L },
+      touch_far: { o: "y", v: 0, name: "Touchline, far side", zone: null, x0: 0, x1: L },
+      halfway: { o: "x", v: L / 2, name: "Halfway line", zone: "C", y0: 0, y1: W },
+      goal_L: { o: "x", v: 0, name: "Left goal line", zone: "L", y0: 0, y1: W },
+      goal_R: { o: "x", v: L, name: "Right goal line", zone: "R", y0: 0, y1: W },
+      box_L_front: { o: "x", v: 16.5, name: "Left box: front line", zone: "L", y0: cy - b, y1: cy + b },
+      box_R_front: { o: "x", v: L - 16.5, name: "Right box: front line", zone: "R", y0: cy - b, y1: cy + b },
+      box_L_near: { o: "y", v: cy + b, name: "Left box: side, camera side", zone: "L", x0: 0, x1: 16.5 },
+      box_R_near: { o: "y", v: cy + b, name: "Right box: side, camera side", zone: "R", x0: L - 16.5, x1: L },
+      box_L_far: { o: "y", v: cy - b, name: "Left box: side, far side", zone: "L", x0: 0, x1: 16.5 },
+      box_R_far: { o: "y", v: cy - b, name: "Right box: side, far side", zone: "R", x0: L - 16.5, x1: L },
+    }[id];
+  }
+  const lineHom = (d) => (d.o === "x" ? [1, 0, -d.v] : [0, 1, -d.v]);                       // a·X + b·Y + c = 0
+  const lineEnds = (d) => (d.o === "x" ? [[d.v, d.y0], [d.v, d.y1]] : [[d.x0, d.v], [d.x1, d.v]]);
+  const lineDone = () => Object.entries(lines).filter(([, a]) => a.length === 2);
+  // terrain (m) -> image (px) à partir des repères ET des lignes : on résout l'inverse (image -> terrain), linéaire dans les deux cas
+  //   repère : G·q ∝ (X, Y, 1) → 2 équations ; point sur une ligne l : l·(G·q) = 0 → 1 équation
+  function solveAll(ks, Ls) {
+    const imgPts = [...ks.map((k) => px(pts[k])), ...Ls.flatMap(([, a]) => a.map(px))];
+    const Ti = norm(imgPts), Tp = [[2 / L, 0, -1], [0, 2 / L, -W / L], [0, 0, 1]], TpI = inv3(Tp);
+    const M = Array.from({ length: 8 }, () => new Array(8).fill(0)), v = new Array(8).fill(0);
+    const add = (row, r) => { for (let a = 0; a < 8; a++) { v[a] += row[a] * r; for (let c = 0; c < 8; c++) M[a][c] += row[a] * row[c]; } };
+    ks.forEach((k) => {
+      const [u, w] = tf(Ti, px(pts[k])), [X, Y] = tf(Tp, LM[k]);
+      add([u, w, 1, 0, 0, 0, -X * u, -X * w], X); add([0, 0, 0, u, w, 1, -Y * u, -Y * w], Y);
+    });
+    Ls.forEach(([id, a]) => {
+      const l0 = lineHom(lineDef(id)), l = [0, 1, 2].map((j) => l0[0] * TpI[0][j] + l0[1] * TpI[1][j] + l0[2] * TpI[2][j]);   // Tp^-T · l
+      const n = Math.hypot(l[0], l[1]) || 1, [A, B, C] = l.map((x) => x / n);
+      a.forEach((q) => { const [u, w] = tf(Ti, px(q)); add([A * u, A * w, A, B * u, B * w, B, C * u, C * w], -C); });
+    });
+    const g = solve(M, v); if (!g) return null;
+    const G = mul(TpI, mul([[g[0], g[1], g[2]], [g[3], g[4], g[5]], [g[6], g[7], 1]], Ti));
+    const Hc = inv3(G), k = Hc[2][2]; return Hc.map((r) => r.map((x) => x / k));
+  }
+  // écart (px) entre un point cliqué et la ligne du terrain dessinée
+  function lineErr(Hc, id, q) {
+    const [a, b] = lineEnds(lineDef(id)).map((p) => tf(Hc, p)), [x, y] = px(q);
+    const dx = b[0] - a[0], dy = b[1] - a[1], n = Math.hypot(dx, dy) || 1;
+    return Math.abs((x - a[0]) * dy - (y - a[1]) * dx) / n;
+  }
+  function fromAll() {
+    const ks = Object.keys(pts).map(Number), Ls = lineDone();
+    const neq = 2 * ks.length + 2 * Ls.length, dirs = new Set(Ls.map(([id]) => lineDef(id).o));
+    if (neq < 8) { H = null; status("", T(`Click 2 points on at least 4 lines you can see (${Ls.length} done).`, `Cliquez 2 points sur au moins 4 lignes que vous voyez (${Ls.length} faites).`)); return false; }
+    if (!ks.length && dirs.size < 2) { H = null; status("bad", T("All your lines go the same way. Add one that crosses them: a goal line, the halfway line or a box front line.", "Toutes vos lignes vont dans le même sens. Ajoutez-en une qui les croise : ligne de but, médiane ou ligne avant d'une surface.")); return false; }
+    LM = landmarks(L, W);
+    const Hc = solveAll(ks, Ls);
+    if (!Hc) { H = null; status("bad", T("These lines don't fit together. Check that each one is the right line.", "Ces lignes ne vont pas ensemble. Vérifiez que chacune est la bonne ligne.")); return false; }
+    const errs = [...ks.map((k) => { const [u, v] = tf(Hc, LM[k]); const [a, b] = px(pts[k]); return [Math.hypot(u - a, v - b), DK(k)]; }),
+      ...Ls.flatMap(([id, a]) => a.map((q) => [lineErr(Hc, id, q), LN(id)]))];
+    const worst = errs.reduce((m, e) => (e[0] > m[0] ? e : m), [0, ""]);
+    H = Hc;
+    const zones = new Set([...ks.map(ZONE), ...Ls.map(([id]) => lineDef(id).zone).filter(Boolean)]);
+    if (Ls.some(([id]) => id.startsWith("touch")) && zones.size === 0) zones.add("C");
+    // dimensions mesurées : le terrain entier est connu, on le dessine en entier pour pouvoir tout vérifier
+    if (FIXED) SEGS = segments(L, W, new Set(["L", "C", "R"]), true, true);
+    else SEGS = segments(L, W, zones, ks.some((k) => FAR.has(k)) || !!lines.touch_far, ks.some((k) => NEAR.has(k)) || !!lines.touch_near);
+    if (neq > 8 && worst[0] > 14) { status("bad", T(`The lines don't quite fit together. The most likely wrong one is <b>${worst[1]}</b> (${worst[0].toFixed(0)} px off): check it's the right line.`, `Les lignes ne collent pas tout à fait. La plus suspecte : <b>${worst[1]}</b> (${worst[0].toFixed(0)} px d'écart) : vérifiez que c'est la bonne.`)); return "bad"; }
+    return true;
+  }
+  let offLine = [];
+  const cross =(a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  function strokeLine(p, d, dashed) {
+    ctx.strokeStyle = "rgba(0,229,255,.95)"; ctx.lineWidth = 2.5; ctx.setLineDash(dashed ? [10, 7] : []);
+    ctx.beginPath(); ctx.moveTo(p[0] - d[0] * 4000, p[1] - d[1] * 4000); ctx.lineTo(p[0] + d[0] * 4000, p[1] + d[1] * 4000); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  function drawPairs() {
+    offLine = [];
+    const known = { x: [], y: [] };   // lignes tracées par sens : { m, d, hom } (hom = droite en coordonnées homogènes)
+    const lone = [];                   // repères seuls sur leur ligne : on tracera la parallèle qui passe par eux
+    for (const grp of ON_LINE) {
+      const ks = grp.ks.filter((k) => pts[k]);
+      if (ks.length === 1) { if (grp.ks.length >= 2) lone.push([grp.o, ks[0]]); continue; }
+      if (ks.length < 2) continue;
+      const P = ks.map((k) => px(pts[k]));
+      // droite passant au mieux par les points (direction principale)
+      const m = P.reduce((a, p) => [a[0] + p[0] / P.length, a[1] + p[1] / P.length], [0, 0]);
+      let sxx = 0, syy = 0, sxy = 0; P.forEach(([x, y]) => { sxx += (x - m[0]) ** 2; syy += (y - m[1]) ** 2; sxy += (x - m[0]) * (y - m[1]); });
+      const th = 0.5 * Math.atan2(2 * sxy, sxx - syy), d = [Math.cos(th), Math.sin(th)];
+      strokeLine(m, d, false);
+      known[grp.o].push({ m, d, hom: cross([m[0], m[1], 1], [m[0] + d[0], m[1] + d[1], 1]) });
+      if (ks.length >= 3) {
+        const dev = P.map(([x, y]) => Math.abs((x - m[0]) * -d[1] + (y - m[1]) * d[0])), j = dev.indexOf(Math.max(...dev));
+        if (dev[j] > 15 && !offLine.includes(ks[j])) offLine.push(ks[j]);
+      }
+    }
+    // repère seul sur sa ligne (ex. le corner pour la ligne de touche) : parallèle aux lignes du même sens.
+    // Avec deux lignes connues du même sens, on passe par leur point de fuite (perspective) ; avec une seule, parallèle simple.
+    for (const [o, k] of lone) {
+      const K = known[o]; if (!K.length) continue;
+      const p = px(pts[k]);
+      let d = K[0].d;
+      if (K.length >= 2) {
+        const v = cross(K[0].hom, K[1].hom);
+        if (Math.abs(v[2]) > 1e-9) { const vx = v[0] / v[2], vy = v[1] / v[2], n = Math.hypot(vx - p[0], vy - p[1]); if (n > 1) d = [(vx - p[0]) / n, (vy - p[1]) / n]; }
+      }
+      strokeLine(p, d, true);
+    }
+  }
+  // lignes cliquées : trait bleu plein à travers les 2 points, avec le nom de la ligne
+  function drawClicked() {
+    for (const [id, a] of Object.entries(lines)) {
+      const P = a.map(px), on = id === selLine;
+      if (P.length === 2) {
+        const d = [P[1][0] - P[0][0], P[1][1] - P[0][1]], n = Math.hypot(d[0], d[1]) || 1;
+        ctx.strokeStyle = on ? "rgba(245,165,36,.95)" : "rgba(0,229,255,.95)"; ctx.lineWidth = 3; ctx.setLineDash([]);
+        ctx.beginPath(); ctx.moveTo(P[0][0] - d[0] / n * 4000, P[0][1] - d[1] / n * 4000); ctx.lineTo(P[0][0] + d[0] / n * 4000, P[0][1] + d[1] / n * 4000); ctx.stroke();
+      }
+      P.forEach(([x, y]) => { ctx.fillStyle = on ? "#f5a524" : "#00e5ff"; ctx.strokeStyle = "#0b0d0c"; ctx.lineWidth = 2; ctx.beginPath(); ctx.rect(x - 6, y - 6, 12, 12); ctx.fill(); ctx.stroke(); });
+      const [x, y] = P[P.length - 1];
+      ctx.font = "600 14px Segoe UI, sans-serif"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.strokeText(LN(id), x + 12, y + 18); ctx.fillStyle = "#fff"; ctx.fillText(LN(id), x + 12, y + 18);
+    }
+  }
+  const nearLinePt = (p) => {
+    const r = cv.getBoundingClientRect(); let best = null;
+    for (const [id, a] of Object.entries(lines)) a.forEach((v, i) => { const d = Math.hypot((v[0] - p[0]) * r.width, (v[1] - p[1]) * r.height); if (d < 14 && (!best || d < best[0])) best = [d, { id, i }]; });
+    return best && best[1];
+  };
+  // ligne suivante à cliquer : la première de la liste qui n'est ni faite ni « je ne la vois pas »
+  // sur les images « une par zone » on pointe des repères, jamais des lignes : pas de ligne en cours
+  const nextLine = () => { if (HINTS[list[idx]] || MINI[list[idx]]) return null; const sk = skipped[list[idx]] || []; return LINE_IDS.find((id) => !sk.includes("line:" + id) && (lines[id] || []).length < 2) || null; };
+  function render() {
+    const fini = !selLine && sel < 0 && HINTS[list[idx]];
+    $("cur").textContent = selLine ? LN(selLine) + " (" + ((lines[selLine] || []).length) + "/2 points)" : (sel >= 0 ? DK(sel) : fini ? T("All done on this image ✓", "Tout est fait sur cette image ✓") : T("Choose a line you can see, in the list", "Choisissez une ligne que vous voyez, dans la liste"));
+    $("cur").classList.toggle("fini", !!fini);
+    $("calcbtn").disabled = !(sel >= 0 && HINTS[list[idx]]);
+    drawPitch();
+    cv.width = img.naturalWidth || 1280; cv.height = img.naturalHeight || 720;
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    // images de pointage (une par zone) : seulement les points, aucune ligne, pour bien voir le terrain sous le curseur
+    if (HINTS[list[idx]]) offLine = [];
+    else { if (lineDone().length) offLine = []; else drawPairs(); drawClicked(); }   // avec des lignes cliquées, les droites déduites des repères ne servent plus
+    drawLines();
+    // terrain calculé par Ciprio (repères que le coach ne pouvait pas pointer) : lignes en pointillés orange
+    if (REVIEW && calcLines.length && Object.keys(calc).length) {
+      ctx.strokeStyle = "rgba(255,138,0,.9)"; ctx.lineWidth = 1.6; ctx.setLineDash([8, 6]);
+      for (const ln of calcLines) { ctx.beginPath(); ln.forEach((q, j) => { const [u, v] = px(q); j ? ctx.lineTo(u, v) : ctx.moveTo(u, v); }); ctx.stroke(); }
+      ctx.setLineDash([]);
+    }
+    for (const [k, v] of Object.entries(calc)) {
+      if (!v || !REVIEW) continue;
+      const [x, y] = px(v), on = +k === sel;
+      ctx.beginPath(); ctx.arc(x, y, on ? 10 : 8, 0, Math.PI * 2); ctx.lineWidth = 3; ctx.strokeStyle = "#ff8a00"; ctx.stroke();
+      ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI * 2); ctx.fillStyle = "#ff8a00"; ctx.fill();
+    }
+    for (const [k, v] of Object.entries(pts)) {
+      const [x, y] = px(v), on = +k === sel;
+      ctx.beginPath(); ctx.arc(x, y, on ? 9 : 7, 0, Math.PI * 2); ctx.fillStyle = on ? "#f5a524" : offLine.includes(+k) ? "#e5484d" : "#12a150"; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = "#fff"; ctx.stroke();
+      // images de pointage : pas de nom écrit à côté des points (il cacherait le terrain) ; la liste à droite suffit
+      if (!HINTS[list[idx]]) { ctx.font = "600 14px Segoe UI, sans-serif"; ctx.lineWidth = 4; ctx.strokeStyle = "rgba(0,0,0,.7)"; ctx.strokeText(DK(k), x + 12, y - 10); ctx.fillStyle = "#fff"; ctx.fillText(DK(k), x + 12, y - 10); }
+    }
+    if (offLine.length) status("bad", T(`These markings should be on the same straight line but aren't: <b>${offLine.map((k) => DK(k)).join(", ")}</b>. One of them is probably another marking.`, `Ces repères devraient être alignés mais ne le sont pas : <b>${offLine.map((k) => DK(k)).join(", ")}</b>. L'un d'eux est sans doute un autre repère.`));
+    $("pos").textContent = T(`Image ${idx + 1} of ${list.length}`, `Image ${idx + 1} sur ${list.length}`);
+    $("steps").innerHTML = list.map((_, i) => `<i class="${i === idx ? "cur" : i < idx ? "done" : ""}"></i>`).join("");
+    $("prev").disabled = $("prev2").disabled = idx === 0;
+    $("next").textContent = $("next2").textContent = idx === list.length - 1 ? T("Finish ✓", "Terminer ✓") : T("Next image →", "Image suivante →");
+    $("pos2").textContent = `${idx + 1} / ${list.length}`;
+  }
+  const status = (cls, html) => { const c = $("check"); c.className = "card check " + cls; c.innerHTML = html; };
+  // liste des repères à placer : les 5 conseillés ; chaque « je ne le vois pas » fait entrer un remplaçant
+  function marksFor(name) {
+    const h = HINTS[name]; if (!h) return [];
+    const sk = skipped[name] || [];
+    const out = h.main.slice();
+    for (const alt of h.alt) { if (out.filter((n) => !sk.includes(n)).length >= 5) break; if (!out.includes(alt)) out.push(alt); }
+    return out;
+  }
+  // guide « lignes » : 2 points n'importe où sur chaque ligne visible (petit schéma animé pour montrer le geste)
+  const LINE_DEMO_ = () => `<svg viewBox="0 0 200 64" style="background:#2a7a45;border-radius:8px;margin:2px 0 8px;max-width:180px;display:block" aria-hidden="true">
+    <path d="M10 56 L190 30" stroke="#fff" stroke-width="1.6" opacity=".85"/><path d="M60 10 L40 62" stroke="#fff" stroke-width="1.2" opacity=".5"/>
+    <path d="M0 57.44 L200 28.56" stroke="#00e5ff" stroke-width="2"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.55;.62;1" dur="3s" repeatCount="indefinite"/></path>
+    <rect x="47" y="46.5" width="7" height="7" fill="#00e5ff" stroke="#0b0d0c"><animate attributeName="opacity" values="0;1;1" keyTimes="0;.2;1" dur="3s" repeatCount="indefinite"/></rect>
+    <rect x="146.5" y="32.6" width="7" height="7" fill="#00e5ff" stroke="#0b0d0c"><animate attributeName="opacity" values="0;0;1;1" keyTimes="0;.42;.45;1" dur="3s" repeatCount="indefinite"/></rect>
+    <text x="100" y="60" fill="#fff" font-size="7" text-anchor="middle" opacity=".9">${T("2 clicks anywhere on the line", "2 clics n'importe où sur la ligne")}</text></svg>`;
+  function hint() {
+    const name = list[idx], sk = skipped[name] || [], LINE_DEMO = LINE_DEMO_();
+    $("left").textContent = "";
+    if (MINI[name]) {
+      const z = MINI[name];
+      const Ls = MINI_LINES[z].map((id) => {
+        const n = (lines[id] || []).length, st = n === 2 ? "done" : id === selLine ? "cur" : "";
+        return `<li class="${st}" data-l="${id}"><span class="n">${n === 2 ? "✓" : n ? n + "/2" : "·"}</span><span class="nm">${LN(id)}</span><span class="act"><button class="go" data-a="lgo">${n === 2 ? T("Redo", "Refaire") : T("Click it", "Cliquer")}</button></span></li>`;
+      }).join("");
+      const Ps = MINI_PTS[z].map((nm) => {
+        const done = Object.keys(pts).some((k) => NAMES[k] === nm), cur = NAMES[sel] === nm;
+        return `<li class="${done ? "done" : cur ? "cur" : ""}" data-n="${nm}"><span class="n">${done ? "✓" : "·"}</span><span class="nm">${DN(nm)}</span><span class="act"><button class="go" data-a="go">${done ? T("Move", "Déplacer") : T("Place", "Placer")}</button></span></li>`;
+      }).join("");
+      $("hint").innerHTML = `<h3>${T("Click the pitch lines you can see", "Cliquez les lignes du terrain que vous voyez")}</h3>` + LINE_DEMO +
+        `<p class="sub">${T("Choose a line <b>you can clearly see</b> on the image, then click 2 points anywhere on it (far apart). Only the lines you see: ignore the others.", "Choisissez une ligne <b>que vous voyez bien</b>, puis cliquez 2 points n'importe où dessus (éloignés). Seulement celles que vous voyez.")}</p><ol class="marks">${Ls}</ol>` +
+        (Ps ? `<h3 style="margin-top:12px">${T("And the centre circle", "Et le rond central")}</h3><p class="sub">${T("The points of the circle you can see.", "Les points du rond que vous voyez.")}</p><ol class="marks">${Ps}</ol>` : "");
+      return;
+    }
+    if (!HINTS[name]) {
+      const Ls = LINE_IDS.map((id, i) => {
+        const n = (lines[id] || []).length, skp = sk.includes("line:" + id), st = skp ? "skip" : n === 2 ? "done" : id === selLine ? "cur" : "";
+        return `<li class="${st}" data-l="${id}"><span class="n">${st === "done" ? "✓" : n ? n + "/2" : i + 1}</span><span class="nm">${LN(id)}</span><span class="act">${
+          skp ? `<button data-a="lundo">${T("Undo", "Annuler")}</button>` : n === 2 ? `<button data-a="lgo">${T("Redo", "Refaire")}</button>` : `<button class="go" data-a="lgo">${T("Place", "Placer")}</button><button data-a="lskip">${T("Can't see it", "Je ne la vois pas")}</button>`}</span></li>`;
+      }).join("");
+      $("hint").innerHTML = `<h3>${T("Click 2 points on each line you can see", "Cliquez 2 points sur chaque ligne que vous voyez")}</h3>` + LINE_DEMO +
+        `<p class="sub">${T("Anywhere on the line: no need to aim for a corner. Can't see a line? Skip it. <b>4 lines are enough</b>, ideally some lengthwise and some across.", "N'importe où sur la ligne. Vous ne la voyez pas ? Passez-la. <b>4 lignes suffisent</b>, dans les deux sens si possible.")}</p><ol class="marks">${Ls}</ol>`;
+      return;
+    }
+    const marks = marksFor(name);
+    const placed = (n) => Object.keys(pts).some((k) => NAMES[k] === n);
+    const traite = marks.filter((n) => placed(n) || calc[NAMES.indexOf(n)] !== undefined || sk.includes(n)).length;
+    $("left").textContent = marks.length ? (traite >= marks.length ? T(`${marks.length} / ${marks.length} · done`, `${marks.length} / ${marks.length} · terminé`) : T(`${traite} / ${marks.length} · ${marks.length - traite} left`, `${traite} / ${marks.length} · encore ${marks.length - traite}`)) : "";
+    const tousFaits = marks.length && traite >= marks.length;
+    for (const id of ["next", "next2"]) $(id).classList.toggle("go-on", !!tousFaits);
+    $("hint").innerHTML = (marks.length ? `<ol class="marks">${marks.map((n, i) => {
+        const st = placed(n) ? "done" : calc[NAMES.indexOf(n)] !== undefined ? "calc" : sk.includes(n) ? "skip" : NAMES[sel] === n ? "cur" : "";
+        return `<li class="${st} pick" data-n="${n}"${st === "skip" || st === "calc" ? "" : ' data-a="go" role="button" tabindex="0"'} title="${T("Click to select it", "Cliquer pour le choisir")}"><span class="n">${st === "done" ? "✓" : st === "calc" ? "C" : i + 1}</span><span class="nm">${DN(n)}${st === "calc" ? (REVIEW ? `<small>${T("placed by Ciprio: drag it if you see better", "placé par Ciprio : glissez-le si vous voyez mieux")}</small>` : `<small>${T("Ciprio places it at the end", "Ciprio le place à la fin")}</small>`) : ""}</span>${
+          st === "skip" ? `<span class="act"><button data-a="undo">${T("Undo", "Annuler")}</button></span>` : st === "calc" ? `<span class="act"><button data-a="uncalc">${T("Undo", "Annuler")}</button></span>` : ""}</li>`;
+      }).join("")}</ol>` : `<p class="sub">${T("Pick 4 to 6 markings far apart from each other.", "Choisissez 4 à 6 repères éloignés les uns des autres.")}</p>`);
+  }
+  $("hint").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-a]") || e.target.closest("li[data-a]"); if (!b) return;
+    const n = b.closest("li").dataset.n, name = list[idx];
+    const sk = skipped[name] = skipped[name] || [];
+    const lid = b.closest("li").dataset.l;
+    if (lid) {
+      if (b.dataset.a === "lgo") { if ((lines[lid] || []).length === 2) delete lines[lid]; selLine = lid; update(); }
+      else if (b.dataset.a === "lskip") { sk.push("line:" + lid); keepSkipped(); if (selLine === lid) selLine = nextLine(); render(); hint(); }
+      else if (b.dataset.a === "lundo") { skipped[name] = sk.filter((m) => m !== "line:" + lid); keepSkipped(); hint(); }
+      return;
+    }
+    if (b.dataset.a === "go") { sel = NAMES.indexOf(n); render(); hint(); }
+    else if (b.dataset.a === "skip") { sk.push(n); keepSkipped(); const nx = marksFor(name).find((m) => !sk.includes(m) && !Object.keys(pts).some((k) => NAMES[k] === m)); if (nx) sel = NAMES.indexOf(nx); render(); hint(); }
+    else if (b.dataset.a === "undo") { skipped[name] = sk.filter((m) => m !== n); keepSkipped(); hint(); }
+    else if (b.dataset.a === "calc") askCalc(NAMES.indexOf(n));
+    else if (b.dataset.a === "uncalc") { delete calc[NAMES.indexOf(n)]; save(); render(); hint(); }
+  });
+
+
+  // ---------- repères que le coach ne peut pas pointer : Ciprio les calcule ----------
+  // (à partir de TOUS les repères pointés par le coach sur toutes les images ; perspective comprise)
+  async function refreshCalc() {
+    const ids = Object.keys(calc);
+    const seq = ++calcSeq, name = list[idx];
+    status("busy", T("Ciprio is placing the markings you can't point…", "Ciprio place les repères que vous ne pouvez pas pointer…"));
+    try {
+      await flushSave();
+      const r = await (await fetch("/api/prevoir/" + name, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids: ids.map(Number) }) })).json();
+      if (seq !== calcSeq || name !== list[idx]) return;
+      if (r.error) { status("bad", r.error); return; }
+      for (const k of ids) calc[k] = r.pts[k] || null;
+      for (const k of Object.keys(r.pts)) if (!pts[k]) calc[k] = r.pts[k];
+      calcLines = r.lignes || []; render(); save(); hint();
+      const off = ids.filter((k) => !r.pts[k]);
+      status("", T(`<b>Placed by Ciprio ✓</b> (orange) from your other markings, with the lines of the pitch (dashed). If you can see a marking better, drag it onto the right spot: it becomes yours and Ciprio recalculates the others.`, `<b>Placés par Ciprio ✓</b> (orange) à partir de vos autres repères, avec les lignes du terrain (pointillés). Si vous voyez mieux un repère, faites-le glisser au bon endroit : il devient le vôtre et Ciprio recalcule les autres.`) +
+        (off.length ? T(` Not drawn here (not enough of your markings on this image): ${off.map((k) => DK(k)).join(", ")}; Ciprio places ${off.length > 1 ? "them" : "it"} from the other images.`, ` Pas dessinés ici (pas assez de vos repères sur cette image) : ${off.map((k) => DK(k)).join(", ")} ; Ciprio les place depuis les autres images.`) : ""));
+    } catch { status("bad", T("Couldn't place the markings automatically. Try again in a moment.", "Impossible de placer les repères automatiquement. Réessayez dans un instant.")); }
+  }
+  function askCalc(k) {
+    if (k < 0) return;
+    delete pts[k]; if (calc[k] === undefined) calc[k] = null;
+    const nx = nextFree(k); if (nx !== undefined) sel = nx;
+    save(); render(); hint();
+    status("", T(`<b>${DK(k)}</b>: Ciprio will place it for you once all the markings are done (pointed or "can't point it"). Carry on with the others.`, `<b>${DK(k)}</b> : Ciprio le placera pour vous quand tous les repères seront traités (pointés ou « je ne peux pas »). Continuez avec les autres.`));
+  }
+  $("calcbtn").onclick = () => askCalc(sel);
+  const nearCalc = (p) => { const r = cv.getBoundingClientRect(); let best = null; for (const [k, v] of Object.entries(calc)) { if (!v) continue; const d = Math.hypot((v[0] - p[0]) * r.width, (v[1] - p[1]) * r.height); if (d < 16 && (!best || d < best[0])) best = [d, +k]; } return best ? best[1] : null; };
+
+  // ---------- terrain dessiné à partir des repères, puis recalage sur les lignes ----------
+  function fromPoints(fast) {
+    // images « une par zone » : on enregistre seulement les repères (ils seront suivis dans toute la vidéo) ;
+    // pas de terrain calculé d'un bloc, juste les lignes entre repères d'une même ligne (en bleu)
+    if (HINTS[list[idx]]) {
+      H = null;
+      const n = Object.keys(pts).length, todo = marksFor(list[idx]).filter((m) => !(skipped[list[idx]] || []).includes(m)).length;
+      const sk2 = skipped[list[idx]] || [], resteIci = marksFor(list[idx]).filter((m) => !sk2.includes(m) && calc[NAMES.indexOf(m)] === undefined && !Object.keys(pts).some((k) => NAMES[k] === m)).length;
+      status("", n ? (resteIci ? T(`<b>${n} marking${n > 1 ? "s" : ""} saved ✓</b> They will be followed through the whole match. Place the others in the list, or click "I can't point it".`, `<b>${n} repère${n > 1 ? "s" : ""} enregistré${n > 1 ? "s" : ""} ✓</b> Ils seront suivis pendant tout le match. Placez les autres de la liste, ou « je ne peux pas ».`)
+        : T(`<b>All done here ✓</b> Go to the next image.`, `<b>Tout est fait ici ✓</b> Passez à l'image suivante.`)) : (todo ? T("Place the markings in the list, in order.", "Placez les repères de la liste, dans l'ordre.") : T(`<b>All done here ✓</b> Go to the next image.`, `<b>Tout est fait ici ✓</b> Passez à l'image suivante.`)));
+      return false;
+    }
+    if (lineDone().length) return fromAll();
+    const ks = Object.keys(pts).map(Number);
+    if (ks.length < 4) { H = null; status("", T(`Place at least 4 markings (${ks.length}/4).`, `Placez au moins 4 repères (${ks.length}/4).`)); return false; }
+    if (spread(ks) < 5) { H = null; status("bad", T("Your markings are almost on one line. Add one <b>away from that line</b>.", "Vos repères sont presque alignés. Ajoutez-en un <b>loin de cette ligne</b>.")); return false; }
+    // dimensions : on ne les suppose pas ; on cherche celles qui collent le mieux aux repères placés,
+    // seulement quand les repères permettent de les mesurer (sinon elles n'influencent pas le dessin)
+    const zones = new Set(ks.map(ZONE)), wobs = ks.some((k) => WDEP.has(k)), lobs = zones.size >= 2;
+    const dst = ks.map((k) => px(pts[k]));
+    let best = null;
+    const Ls = fast || FIXED ? [L] : [], Ws = fast || FIXED ? [W] : [];
+    if (!fast && !FIXED) { for (let l = lobs ? 85 : 105; l <= (lobs ? 125 : 105); l += 0.5) Ls.push(l); for (let w = wobs ? 40 : 68; w <= (wobs ? 90 : 68); w += 0.5) Ws.push(w); }
+    for (const l of Ls)
+      for (const w of Ws) {
+        const lm = landmarks(l, w), Hc = homography(ks.map((k) => lm[k]), dst);
+        if (!Hc) continue;
+        const e = ks.reduce((a, k, i) => { const [u, v] = tf(Hc, lm[k]); return a + Math.hypot(u - dst[i][0], v - dst[i][1]); }, 0);
+        if (!best || e < best[0]) best = [e, l, w, Hc];
+      }
+    if (!best) { H = null; status("bad", T("These markings don't fit together. Check that each one is the right marking.", "Ces repères ne vont pas ensemble. Vérifiez que chacun est le bon repère.")); return false; }
+    [, L, W, H] = best; LM = landmarks(L, W); SEGS = segments(L, W, zones, ks.some((k) => FAR.has(k)), ks.some((k) => NEAR.has(k)));
+    const err = ks.map((k) => { const [u, v] = tf(H, LM[k]); const [a, b] = px(pts[k]); return Math.hypot(u - a, v - b); });
+    const e = Math.max(...err);
+    if (ks.length > 4 && e > 12) { status("bad", T(`These markings don't fit together. The most likely wrong one is <b>${DK(ks[err.indexOf(e)])}</b> (${e.toFixed(0)} px off): check which marking it really is, or delete it.`, `Ces repères ne collent pas. Le plus suspect : <b>${DK(ks[err.indexOf(e)])}</b> (${e.toFixed(0)} px d'écart) : vérifiez quel repère c'est vraiment, ou effacez-le.`)); return "bad"; }
+    // le dessin doit tomber dans l'image : sinon un repère est presque sûrement confondu avec un autre
+    const all = SEGS.flat(), inside = all.filter((q) => { const [u, v, z] = tf(H, q); return z > 0 && u >= -20 && u <= cv.width + 20 && v >= -20 && v <= cv.height + 20; }).length;
+    if (inside < all.length * 0.3) { status("bad", T("The drawing falls outside the image: one marking is probably confused with another. Check the far / near and left / right of each one.", "Le dessin sort de l'image : un repère est sans doute confondu avec un autre. Vérifiez fond / près et gauche / droite.")); return "bad"; }
+    return true;
+  }
+  const NOSNAP = location.search.includes("nosnap");   // pour tester le dessin sans le recalage automatique
+  async function snap() {
+    if (!H || NOSNAP) return;
+    const seq = ++snapSeq;
+    status("busy", T("Snapping the drawing onto the white lines…", "Recalage du dessin sur les lignes blanches…"));
+    try {
+      const r = await (await fetch("/api/refine/" + list[idx], { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ H, L, W, P: SEGS.flat().filter((_, i) => i % 2 === 0) }) })).json();
+      if (seq !== snapSeq || !r.H) return;
+      H = r.H; manual = false; render(); save();
+      const pct = Math.round(r.after * 100);
+      status(pct >= 45 ? "" : "bad", pct >= 45
+        ? T("<b>Snapped onto the lines ✓</b> Do the pink lines sit on the real lines? If one is a little off, drag it onto the real line. Then: next image.", "<b>Recalé sur les lignes ✓</b> Les lignes roses sont-elles sur les vraies ? Sinon, glissez-les dessus. Puis : image suivante.")
+        : T("The drawing doesn't match the lines well yet. Check your markings, or drag the pink lines onto the real lines.", "Le dessin ne colle pas encore bien. Vérifiez vos repères, ou glissez les lignes roses sur les vraies."));
+    } catch { status("bad", T("Couldn't snap automatically. You can still drag the pink lines onto the real lines.", "Recalage automatique impossible. Vous pouvez glisser les lignes roses sur les vraies.")); }
+  }
+  function update() { manual = false; const r = fromPoints(); render(); if (r === true) snap(); save(); hint(); }
+
+  // ---------- chargement / enregistrement ----------
+  async function load(i) {
+    idx = Math.max(0, Math.min(list.length - 1, i));
+    const lab = await (await fetch("/api/label/" + list[idx])).json();
+    bad = !!lab.skip;
+    if (lab.zone) { zone[list[idx]] = lab.zone; HINTS[list[idx]] = ZLIST(lab.zone); }
+    calc = Object.fromEntries(Object.entries(lab.calc || {}).map(([k, v]) => [k, v && v[0] >= 0 ? v : null])); calcLines = [];
+    pts = lab.points || {}; places = lab.places_par_ciprio || []; lines = lab.lines || {}; H = null; manual = false; sel = MINI[list[idx]] ? -1 : nextFree(0); selLine = nextLine();
+    img.src = await CIPRIO_IMAGE(list[idx]); await img.decode().catch(() => {});
+    cv.width = img.naturalWidth || 1280; cv.height = img.naturalHeight || 720;
+    hint(); zoneUI();
+    if (REVIEW) refreshCalc();   // seulement une fois tout traité
+    if (bad) { render(); status("badnote", T("Marked as unusable: Ciprio won't use this image. Go to the next one.", "Marquée inutilisable : Ciprio n'utilisera pas cette image. Passez à la suivante.")); return; }
+    const fit = fromPoints();
+    if (fit === "bad") render();
+    else if (fit) {
+      if (lab.H && lab.manual && lab.length_m === L && lab.width_m === W) { H = lab.H; manual = true; render(); status("", T("Saved drawing loaded. Check the pink lines, then go to the next image.", "Dessin enregistré chargé. Vérifiez les lignes roses, puis image suivante.")); }
+      else { render(); snap(); }
+    }
+    else render();
+  }
+  function save() {
+    clearTimeout(saveT);
+    const name = list[idx], body = JSON.stringify({ points: pts, places_par_ciprio: places.filter((k) => pts[k]), lines, calc: Object.fromEntries(Object.entries(calc).map(([k, v]) => [k, v || [-1, -1]])), H, L, W, manual, skip: bad, zone: zone[name] || null });
+    saveT = setTimeout(() => { saveT = null; pendingSave = fetch("/api/label/" + name, { method: "POST", headers: { "Content-Type": "application/json" }, body }); }, 150);
+    pendingFlush = () => { clearTimeout(saveT); saveT = null; return fetch("/api/label/" + name, { method: "POST", headers: { "Content-Type": "application/json" }, body }); };
+  }
+  // dernier pointage enregistré AVANT de chercher les images de remplacement (sinon un repère pointé est redemandé)
+  let pendingSave = null, pendingFlush = null;
+  async function flushSave() { if (saveT && pendingFlush) await pendingFlush(); else if (pendingSave) await pendingSave; }
+  document.querySelectorAll("#zonebox .seg button").forEach((b) => b.addEventListener("click", () => {
+    const name = list[idx]; zone[name] = b.dataset.z; HINTS[name] = ZLIST(b.dataset.z);
+    sel = nextFree(0); zoneUI(); hint(); render(); fromPoints(); save();
+  }));
+  $("badimg").addEventListener("click", () => {
+    bad = !bad; zoneUI(); save();
+    if (bad) { status("badnote", T("Marked as unusable: Ciprio won't use this image.", "Marquée inutilisable : Ciprio n'utilisera pas cette image.")); if (idx < list.length - 1) setTimeout(() => load(idx + 1), 600); }
+    else { hint(); render(); fromPoints(); }
+  });
+  const nextFree = (from) => {
+    const sk = skipped[list[idx]] || [];
+    const todo = marksFor(list[idx]).find((n) => !sk.includes(n) && calc[NAMES.indexOf(n)] === undefined && !Object.keys(pts).some((k) => NAMES[k] === n));
+    if (todo) return NAMES.indexOf(todo);
+    if (HINTS[list[idx]]) return -1;   // liste de l'image finie : rien d'autre à pointer (fondateur, 18/11/2026)
+    for (let k = 1; k <= NAMES.length; k++) { const j = (from + k) % NAMES.length; if (!pts[j]) return j; } return from;
+  };
+
+  // ---------- souris : points et lignes roses ----------
+  const pos = (e) => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width, (e.clientY - r.top) / r.height]; };
+  const scaleR = () => cv.getBoundingClientRect().width / cv.width;   // pixels écran par pixel image
+  const nearPoint = (p) => { const r = cv.getBoundingClientRect(); let best = null; for (const [k, v] of Object.entries(pts)) { const d = Math.hypot((v[0] - p[0]) * r.width, (v[1] - p[1]) * r.height); if (d < 14 && (!best || d < best[0])) best = [d, +k]; } return best ? best[1] : null; };
+  function nearLine(p) {
+    if (!H) return null;
+    const [mx, my] = px(p), lim = 9 / scaleR();
+    let best = null;
+    for (const seg of SEGS) for (const q of seg) { const [u, v, z] = tf(H, q); if (z <= 0) continue; const d = Math.hypot(u - mx, v - my); if (d < lim && (!best || d < best[0])) best = [d, q]; }
+    return best && best[1];
+  }
+  // points de contrôle répartis sur la partie visible du terrain : ils restent fixes pendant qu'on tire une ligne
+  function controls(except) {
+    const vis = [];
+    for (const seg of SEGS) for (let i = 0; i < seg.length; i += 6) { const [u, v, z] = tf(H, seg[i]); if (z > 0 && u >= 0 && u < cv.width && v >= 0 && v < cv.height) vis.push(seg[i]); }
+    const out = [];
+    const far = (q) => Math.min(...[except, ...out].map((o) => Math.hypot(q[0] - o[0], q[1] - o[1])));
+    for (let n = 0; n < 6 && vis.length; n++) { let b = null; for (const q of vis) { const d = far(q); if (!b || d > b[0]) b = [d, q]; } if (b[0] < 3) break; out.push(b[1]); }
+    return out.map((q) => [q, tf(H, q).slice(0, 2)]);
+  }
+  cv.addEventListener("mousedown", (e) => {
+    if (e.button !== 0) return;
+    const p = pos(e), lq = nearLinePt(p);
+    if (lq) { drag = lq; selLine = lq.id; render(); hint(); return; }
+    const k = nearPoint(p);
+    if (k !== null) { drag = k; sel = k; selLine = null; render(); hint(); return; }
+    const kc = nearCalc(p);
+    if (kc !== null) { pts[kc] = calc[kc]; delete calc[kc]; fromCalc = true; drag = kc; sel = kc; selLine = null; render(); hint(); return; }
+    if (MINI[list[idx]] && !selLine && sel < 0) { status("", T("First choose, in the list, a line you can see.", "Choisissez d'abord, dans la liste, une ligne que vous voyez.")); return; }
+    if (selLine) {
+      // 2 points sur la ligne choisie ; au 2e, on passe à la ligne suivante
+      const a = lines[selLine] = lines[selLine] || [];
+      if (a.length >= 2) a.shift();
+      a.push(p);
+      if (a.length === 2) selLine = nextLine();
+      update(); return;
+    }
+    const q = nearLine(p);
+    if (q) { lineDrag = { q, ctrl: controls(q) }; cv.classList.add("grab"); return; }
+    if (sel < 0) { status("", T(`<b>All done on this image ✓</b> Go to the next image. (To add another marking you see, click it on the pitch diagram first.)`, `<b>Tout est fait sur cette image ✓</b> Passez à l'image suivante. (Pour ajouter un autre repère que vous voyez, cliquez-le d'abord sur le schéma.)`)); return; }
+    delete calc[sel];
+    pts[sel] = p; sel = MINI[list[idx]] ? -1 : nextFree(sel); update();
+    if (REVIEW && Object.keys(calc).length) refreshCalc();   // chaque nouveau repère du coach améliore le calcul des autres
+  });
+  window.addEventListener("mousemove", (e) => {
+    if (drag !== null && typeof drag === "object") { lines[drag.id][drag.i] = pos(e).map((v) => Math.min(1, Math.max(0, v))); fromPoints(true); render(); }
+    else if (drag !== null) { pts[drag] = pos(e).map((v) => Math.min(1, Math.max(0, v))); fromPoints(true); render(); }
+    else if (lineDrag) {
+      const m = px(pos(e));
+      const src = [...lineDrag.ctrl.map((c) => c[0]), lineDrag.q], dst = [...lineDrag.ctrl.map((c) => c[1]), m];
+      const Hn = src.length >= 4 && homography(src, dst);
+      if (Hn) { H = Hn; render(); }
+    } else if (e.target === cv) {
+      cv.classList.toggle("grab", !!(H && nearPoint(pos(e)) === null && nearLine(pos(e))));
+    }
+  });
+  window.addEventListener("mouseup", () => {
+    if (drag !== null) { drag = null; update(); if (REVIEW && Object.keys(calc).length) refreshCalc(); fromCalc = false; }
+    if (lineDrag) { lineDrag = null; manual = true; cv.classList.remove("grab"); save(); status("", T("<b>Line moved ✓</b> Do all the pink lines sit on the real lines? Then: next image.", "<b>Ligne déplacée ✓</b> Toutes les lignes roses sont sur les vraies ? Alors : image suivante.")); }
+  });
+  cv.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    const lq = nearLinePt(pos(e));
+    if (lq) { lines[lq.id].splice(lq.i, 1); if (!lines[lq.id].length) delete lines[lq.id]; selLine = lq.id; update(); return; }
+    const k = nearPoint(pos(e)); if (k !== null) { delete pts[k]; sel = k; update(); return; }
+    const kc = nearCalc(pos(e)); if (kc !== null) { delete calc[kc]; sel = kc; save(); render(); hint(); }
+  });
+  cv.addEventListener("mousemove", (e) => {
+    const [x, y] = pos(e); lp.style.display = "block";
+    const sx = x * img.naturalWidth, sy = y * img.naturalHeight, s = 56;
+    lctx.imageSmoothingEnabled = false;
+    lctx.drawImage(img, sx - s / 2, sy - s / 2, s, s, 0, 0, 170, 170);
+    lctx.drawImage(cv, sx - s / 2, sy - s / 2, s, s, 0, 0, 170, 170);
+    lctx.strokeStyle = "#f5a524"; lctx.lineWidth = 1.5; lctx.beginPath(); lctx.moveTo(85, 66); lctx.lineTo(85, 104); lctx.moveTo(66, 85); lctx.lineTo(104, 85); lctx.stroke();
+  });
+  cv.addEventListener("mouseleave", () => { lp.style.display = "none"; });
+
+  $("snap").onclick = () => { const r = fromPoints(); render(); if (r === true) snap(); };
+  $("del").onclick = () => { if (selLine && lines[selLine]) { delete lines[selLine]; update(); } else if (pts[sel]) { delete pts[sel]; update(); } };
+  $("clear").onclick = () => { if (confirm(T("Clear all markings and lines on this image?", "Effacer tous les repères et lignes de cette image ?"))) { pts = {}; lines = {}; H = null; selLine = nextLine(); update(); } };
+  const nav = (on) => { for (const id of ["prev", "next", "steps", "pos"]) $(id).hidden = !on; };
+  $("prev").onclick = $("prev2").onclick = () => load(idx - 1);
+  $("next2").onclick = () => $("next").click();
+  async function allLabels() { const o = {}; for (const n of list) o[n] = await (await fetch("/api/label/" + n)).json(); return o; }
+  async function valider() {
+    for (const [k, v] of Object.entries(calc)) if (v) { pts[k] = v; delete calc[k]; if (!places.includes(k)) places.push(k); }
+    save(); await flushSave();
+  }
+  async function nextOrEnd() {
+    await flushSave();
+    if (REVIEW) {
+      await valider();
+      const j = AREVOIR.find((i) => i > idx);
+      return j !== undefined ? load(j) : finish();
+    }
+    if (idx < list.length - 1) return load(idx + 1);
+    // toutes les images vues : chaque repère demandé doit être pointé ou « je ne peux pas le pointer »
+    const labs = await allLabels();
+    for (const [i, x] of LIST.entries()) {
+      const lab = labs[x.name], done = new Set([...Object.keys(lab.points || {}), ...Object.keys(lab.calc || {})].map(Number));
+      const left = (x.ask || []).filter((k) => !done.has(k));
+      if (left.length && !lab.skip) {
+        await load(i);
+        status("bad", T(`Still to do on this image: <b>${left.map((k) => DK(k)).join(", ")}</b>. Point each one, or click "I can't point it".`, `Encore à faire sur cette image : <b>${left.map((k) => DK(k)).join(", ")}</b>. Pointez chacun, ou « je ne peux pas ».`));
+        return;
+      }
+    }
+    // tout est traité : Ciprio place maintenant les repères impossibles à pointer, à partir de TOUS les pointages,
+    // seulement sur les images où leur forme est tracée (plusieurs repères pointés dessus)
+    AREVOIR = [];
+    for (const [i, n] of list.entries()) {
+      const ids = Object.keys(labs[n].calc || {}).map(Number);
+      try {
+        const r = await (await fetch("/api/prevoir/" + n, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ids }) })).json();
+        if (r.pts && Object.keys(r.pts).length) AREVOIR.push(i);
+      } catch {}
+    }
+    if (!AREVOIR.length) return finish();
+    REVIEW = true;
+    await load(AREVOIR[0]);
+    $("annonce").hidden = false;
+    $("annonce").innerHTML = T("<b>All markings done ✓</b> Ciprio has now drawn, in <b>orange</b>, the shapes you pointed several markings on, and placed their other markings. Check them: if one is clearly off, drag it to the right spot. When you go to the next image, the orange markings you leave count as placed.",
+      "<b>Tous les repères sont traités ✓</b> Ciprio a dessiné en <b>orange</b> les formes sur lesquelles vous avez pointé plusieurs repères, et placé leurs autres repères. Vérifiez : si l'un est nettement à côté, faites-le glisser. En passant à l'image suivante, les repères orange que vous laissez comptent comme placés.");
+  }
+  $("next").onclick = () => { nextOrEnd(); };
+  // fin des images : écran d'attente, Ciprio cherche des images pour les repères pas encore pointés, puis les montre
+  async function finish() {
+    $("work").hidden = true; $("end").hidden = false; nav(false);
+    const endp = $("endp");
+    const old = endp.innerHTML;
+    endp.textContent = T("Checking your markings…", "Vérification de vos repères…");
+    try {
+      await flushSave();
+      // un seul tour de pointage : le serveur ne propose plus d'image, il calcule ce qui manque (mode « fin »)
+      const r = await (await fetch("/api/completer", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })).json();
+      endp.innerHTML = r.calcules && r.calcules.length
+        ? T(`Your pitch is set up ✓ Ciprio calculated ${r.calcules.length} marking${r.calcules.length > 1 ? "s" : ""} from yours. You can close this page.`, `Votre terrain est réglé ✓ Ciprio a calculé ${r.calcules.length} repère${r.calcules.length > 1 ? "s" : ""} à partir des vôtres. Vous pouvez fermer cette page.`)
+        : old;
+    } catch (e) { endp.innerHTML = old; }
+  }
+  document.querySelectorAll(".lang button").forEach((b) => b.addEventListener("click", () => {
+    setLang(b.dataset.lang); introN();
+    if (!$("work").hidden) { render(); hint(); zoneUI(); if (HINTS[list[idx]] && !REVIEW) fromPoints(); }
+  }));
+  $("start").onclick = () => {
+    $("intro").hidden = true; $("work").hidden = false; nav(true); load(0);
+  };
+  $("back").onclick = () => { $("end").hidden = true; $("work").hidden = false; nav(true); load(0); };
+  window.addEventListener("keydown", (e) => {
+    if ($("work").hidden || e.target.tagName === "INPUT") return;
+    if (e.key === "Delete" || e.key === "Backspace") { e.preventDefault(); $("del").click(); }
+    else if (e.key === "ArrowRight") $("next").click();
+    else if (e.key === "ArrowLeft") $("prev").click();
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mes matchs · Ciprio</title>
+<meta name="robots" content="noindex,nofollow">
+<link rel="icon" href="/logo.svg" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/assets/site.css">
+<style>
+  .co-top{position:sticky;top:0;z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+  .co-top .wrap{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:64px}
+  .co-brand{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:600}
+  .co-brand img{width:28px;height:28px}
+  .co-tag{font-family:var(--f-mono);font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:2px 8px}
+  .co-right{display:flex;align-items:center;gap:14px;font-size:.92rem}
+  .co-lang button{background:none;border:0;font:inherit;font-family:var(--f-mono);font-size:.78rem;color:var(--muted);cursor:pointer;padding:4px}
+  .co-lang button[aria-pressed="true"]{color:var(--ink);font-weight:600}
+  main.co{padding:40px 0 80px}
+  .co-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:28px}
+  .co-auth{max-width:440px;margin:24px auto 0}
+  .co-auth h1{font-size:1.8rem;margin-bottom:8px}
+  .co-auth .muted{margin-bottom:20px}
+  .co-tabs{display:flex;gap:4px;background:var(--bg);border:1px solid var(--line);border-radius:999px;padding:4px;margin-bottom:22px}
+  .co-tabs button{flex:1;border:0;background:none;border-radius:999px;padding:8px;font:inherit;font-weight:500;cursor:pointer;color:var(--muted)}
+  .co-tabs button[aria-selected="true"]{background:var(--ink);color:#fff}
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px}
+  .field label{font-size:.88rem;font-weight:500}
+  .field input,.field select{font:inherit;padding:11px 12px;border:1px solid var(--line);border-radius:10px;background:#fff}
+  .field input:focus{outline:2px solid var(--accent);outline-offset:0}
+  .code-input{font-family:var(--f-mono)!important;font-size:1.5rem!important;letter-spacing:.3em;text-align:center}
+  .co-actions{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-top:8px}
+  .linkbtn{background:none;border:0;padding:0;font:inherit;color:var(--ink-2);text-decoration:underline;cursor:pointer;font-size:.9rem}
+  .form-msg{font-size:.9rem;min-height:1.2em}
+  .form-msg.err{color:var(--bad)} .form-msg.ok{color:var(--ok)}
+  .co-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px}
+  .co-head h1{font-size:2.2rem}
+  .co-list{display:grid;gap:14px}
+  .co-match{display:grid;grid-template-columns:1fr auto;gap:10px 20px;align-items:center;text-decoration:none;color:inherit;transition:border-color .15s}
+  .co-match:hover{border-color:var(--ink-2)}
+  .co-match h2{font-size:1.2rem}
+  .co-match .meta{color:var(--muted);font-size:.9rem}
+  .pill{display:inline-flex;align-items:center;gap:6px;font-size:.82rem;font-weight:500;border-radius:999px;padding:4px 10px;background:var(--bg);border:1px solid var(--line);white-space:nowrap}
+  .pill::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--muted)}
+  .pill.turn{background:#e9f7ef;border-color:#bfe8cf}.pill.turn::before{background:var(--accent)}
+  .pill.done::before{background:var(--ink)}
+  .pill.err{background:#fdecec;border-color:#f5c2c3}.pill.err::before{background:var(--bad)}
+  .pill.work::before{background:#e5a50a}
+  .frise{display:flex;gap:4px;grid-column:1/-1}
+  .frise span{flex:1;height:5px;border-radius:3px;background:var(--line)}
+  .frise span.on{background:var(--ink)} .frise span.now{background:var(--accent)}
+  .steps{list-style:none;margin:20px 0 0;padding:0;display:grid;gap:2px}
+  .steps li{display:flex;align-items:center;gap:12px;padding:10px 0;color:var(--muted)}
+  .steps li b{width:26px;height:26px;border-radius:50%;border:1px solid var(--line);display:grid;place-items:center;font-size:.8rem;font-family:var(--f-mono);font-weight:500;flex:none}
+  .steps li.on{color:var(--ink)} .steps li.on b{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .steps li.now{color:var(--ink);font-weight:600} .steps li.now b{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .co-two{display:grid;grid-template-columns:1.2fr 1fr;gap:20px;align-items:start}
+  .callout{margin-top:20px;padding:18px;border-radius:12px;background:#e9f7ef;border:1px solid #bfe8cf}
+  .callout.err{background:#fdecec;border-color:#f5c2c3}
+  .callout p{margin-bottom:12px}
+  .radio{display:flex;gap:10px;align-items:flex-start;padding:12px;border:1px solid var(--line);border-radius:10px;margin-bottom:8px;cursor:pointer}
+  .radio input{margin-top:4px}
+  .radio.off{opacity:.55;cursor:not-allowed}
+  .radio small{display:block;color:var(--muted)}
+  .empty{text-align:center;padding:48px 20px;color:var(--muted)}
+  .small{font-size:.86rem}
+  .back{display:inline-block;margin-bottom:18px;color:var(--muted);text-decoration:none;font-size:.92rem}
+  @media (max-width:760px){.co-two{grid-template-columns:1fr}.co-head h1{font-size:1.7rem}}
+</style>
+</head>
+<body>
+<header class="co-top">
+  <div class="wrap">
+    <a class="co-brand" href="/app"><img src="/logo.svg" alt=""><span>Ciprio</span><span class="co-tag">Coach</span></a>
+    <div class="co-right">
+      <span class="co-lang" role="group" aria-label="Langue"><button data-lang="en">ENG</button>·<button data-lang="fr">FR</button></span>
+      <span id="userbox" hidden><span class="muted" id="who"></span> <button class="btn btn-line" id="logout" type="button"></button></span>
+    </div>
+  </div>
+</header>
+
+<main class="co wrap" id="view" aria-live="polite"></main>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="/assets/app/commun.js"></script>
+<script src="/assets/app/video.js"></script>
+<script>
+(() => {
+  const { sb, T, esc, ETATS, etatNom } = CIPRIO;
+  const $ = (id) => document.getElementById(id);
+  const view = $("view");
+  const dateFmt = () => new Intl.DateTimeFormat(CIPRIO.lang() === "fr" ? "fr-FR" : "en-GB", { day: "numeric", month: "long", year: "numeric" });
+  let session = null;
+  let codeCtx = null;   // { email, type: "email" | "recovery" } : en attente du code reçu par e-mail
+
+  // ---------- langue ----------
+  const langUI = () => document.querySelectorAll(".co-lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === CIPRIO.lang())));
+  document.querySelectorAll(".co-lang button").forEach((b) => b.addEventListener("click", () => { CIPRIO.setLang(b.dataset.lang); langUI(); route(); }));
+  langUI();
+
+  const msg = (el, text, kind = "") => { el.textContent = text; el.className = "form-msg " + kind; };
+  const authErr = (e) => {
+    const m = (e && e.message) || "";
+    if (/invalid login/i.test(m)) return T("Wrong e-mail or password.", "E-mail ou mot de passe incorrect.");
+    if (/not confirmed/i.test(m)) return T("Your e-mail is not confirmed yet.", "Votre e-mail n'est pas encore confirmé.");
+    if (/expired|invalid.*(otp|token)|token.*(expired|invalid)/i.test(m)) return T("This code is wrong or has expired. Ask for a new one.", "Ce code est faux ou a expiré. Demandez-en un nouveau.");
+    if (/rate limit|too many|security purposes/i.test(m)) return T("Too many e-mails sent. Please wait a few minutes and try again.", "Trop d'e-mails envoyés. Attendez quelques minutes puis réessayez.");
+    if (/password.*(at least|short|weak)/i.test(m)) return T("Password too short: at least 8 characters.", "Mot de passe trop court : au moins 8 caractères.");
+    if (/already registered|already exists/i.test(m)) return T("An account already exists with this e-mail: log in.", "Un compte existe déjà avec cet e-mail : connectez-vous.");
+    return m || T("Something went wrong. Try again.", "Un problème est survenu. Réessayez.");
+  };
+
+  // ---------- connexion / création de compte / code reçu par e-mail ----------
+  function authView(tab = "login") {
+    view.innerHTML = `
+      <div class="co-auth co-card">
+        <h1>${T("Your Ciprio space", "Votre espace Ciprio")}</h1>
+        <p class="muted">${T("Send your matches, set up the pitch, follow each analysis.", "Envoyez vos matchs, réglez le terrain, suivez chaque analyse.")}</p>
+        <div class="co-tabs" role="tablist">
+          <button role="tab" data-t="login" aria-selected="${tab === "login"}">${T("Log in", "Se connecter")}</button>
+          <button role="tab" data-t="signup" aria-selected="${tab === "signup"}">${T("Create an account", "Créer un compte")}</button>
+        </div>
+        <form id="f" novalidate>
+          ${tab === "signup" ? `
+          <div class="field"><label for="nom">${T("Your name", "Votre nom")}</label><input id="nom" autocomplete="name" required></div>
+          <div class="field"><label for="club">${T("Club", "Club")}</label><input id="club" autocomplete="organization"></div>` : ""}
+          <div class="field"><label for="email">${T("E-mail", "E-mail")}</label><input id="email" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="mdp">${T("Password", "Mot de passe")}${tab === "signup" ? ` <span class="muted small">${T("(8 characters min.)", "(8 caractères min.)")}</span>` : ""}</label>
+            <input id="mdp" type="password" autocomplete="${tab === "signup" ? "new-password" : "current-password"}" minlength="8" required></div>
+          <div class="co-actions">
+            <button class="btn btn-ink" type="submit">${tab === "signup" ? T("Create my account →", "Créer mon compte →") : T("Log in →", "Se connecter →")}</button>
+            ${tab === "login" ? `<button class="linkbtn" type="button" id="oubli">${T("Forgot your password?", "Mot de passe oublié ?")}</button>` : ""}
+          </div>
+          <p class="form-msg" id="m" role="status"></p>
+        </form>
+      </div>`;
+    view.querySelectorAll(".co-tabs button").forEach((b) => b.addEventListener("click", () => authView(b.dataset.t)));
+    const m = $("m");
+    if ($("oubli")) $("oubli").addEventListener("click", () => forgotView($("email").value));
+    $("f").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const email = $("email").value.trim().toLowerCase(), password = $("mdp").value;
+      if (!email || !password) return msg(m, T("Fill in your e-mail and password.", "Indiquez votre e-mail et votre mot de passe."), "err");
+      msg(m, T("One moment…", "Un instant…"));
+      if (tab === "signup") {
+        if (password.length < 8) return msg(m, T("Password too short: at least 8 characters.", "Mot de passe trop court : au moins 8 caractères."), "err");
+        const nom = $("nom").value.trim(), club = $("club").value.trim();
+        if (!nom) return msg(m, T("Fill in your name.", "Indiquez votre nom."), "err");
+        const { data, error } = await sb.auth.signUp({ email, password, options: { data: { nom, club } } });
+        if (error) return msg(m, authErr(error), "err");
+        if (data.session) return route();             // confirmation par e-mail désactivée : directement connecté
+        // compte déjà existant : Supabase ne renvoie aucune identité (et n'envoie pas d'e-mail)
+        if (data.user && (!data.user.identities || data.user.identities.length === 0))
+          return msg(m, T("An account already exists with this e-mail: log in (or reset your password).", "Un compte existe déjà avec cet e-mail : connectez-vous (ou « mot de passe oublié »)."), "err");
+        codeCtx = { email, type: "email" };
+        return codeView();
+      }
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+      if (error && /not confirmed/i.test(error.message)) {
+        await sb.auth.resend({ type: "signup", email });
+        codeCtx = { email, type: "email" };
+        return codeView(T("Your e-mail isn't confirmed yet: we've just sent you a new code.", "Votre e-mail n'est pas encore confirmé : nous venons de vous envoyer un nouveau code."));
+      }
+      if (error) return msg(m, authErr(error), "err");
+      route();
+    });
+  }
+
+  function codeView(note) {
+    const rec = codeCtx.type === "recovery";
+    view.innerHTML = `
+      <div class="co-auth co-card">
+        <h1>${T("Check your e-mails", "Regardez vos e-mails")}</h1>
+        <p class="muted">${note ? esc(note) + " " : ""}${T("We sent a security code to", "Nous avons envoyé un code de sécurité à")} <b>${esc(codeCtx.email)}</b>. ${T("Type it below.", "Tapez-le ci-dessous.")}</p>
+        <form id="f" novalidate>
+          <div class="field"><label for="code">${T("Security code", "Code de sécurité")}</label>
+            <input id="code" class="code-input" inputmode="numeric" autocomplete="one-time-code" maxlength="10" required></div>
+          ${rec ? `<div class="field"><label for="mdp">${T("New password", "Nouveau mot de passe")} <span class="muted small">${T("(8 characters min.)", "(8 caractères min.)")}</span></label><input id="mdp" type="password" autocomplete="new-password" minlength="8" required></div>` : ""}
+          <div class="co-actions">
+            <button class="btn btn-ink" type="submit">${rec ? T("Save my password →", "Enregistrer mon mot de passe →") : T("Confirm →", "Valider →")}</button>
+            <button class="linkbtn" type="button" id="renvoi">${T("Send a new code", "Renvoyer un code")}</button>
+            <button class="linkbtn" type="button" id="retour">${T("Back", "Retour")}</button>
+          </div>
+          <p class="form-msg" id="m" role="status"></p>
+        </form>
+      </div>`;
+    const m = $("m");
+    $("code").focus();
+    $("retour").addEventListener("click", () => { codeCtx = null; authView("login"); });
+    $("renvoi").addEventListener("click", async () => {
+      msg(m, T("Sending…", "Envoi…"));
+      const { error } = rec ? await sb.auth.resetPasswordForEmail(codeCtx.email) : await sb.auth.resend({ type: "signup", email: codeCtx.email });
+      msg(m, error ? authErr(error) : T("New code sent.", "Nouveau code envoyé."), error ? "err" : "ok");
+    });
+    $("f").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const token = $("code").value.replace(/\D/g, "");
+      if (token.length < 6) return msg(m, T("The code has at least 6 digits.", "Le code a au moins 6 chiffres."), "err");
+      if (rec && $("mdp").value.length < 8) return msg(m, T("Password too short: at least 8 characters.", "Mot de passe trop court : au moins 8 caractères."), "err");
+      msg(m, T("Checking…", "Vérification…"));
+      const { error } = await sb.auth.verifyOtp({ email: codeCtx.email, token, type: codeCtx.type });
+      if (error) return msg(m, authErr(error), "err");
+      if (rec) {
+        const { error: e2 } = await sb.auth.updateUser({ password: $("mdp").value });
+        if (e2) return msg(m, authErr(e2), "err");
+      }
+      codeCtx = null;
+      route();
+    });
+  }
+
+  function forgotView(email0 = "") {
+    view.innerHTML = `
+      <div class="co-auth co-card">
+        <h1>${T("Forgot your password?", "Mot de passe oublié ?")}</h1>
+        <p class="muted">${T("Type your e-mail: you'll receive a security code to choose a new password.", "Indiquez votre e-mail : vous recevrez un code de sécurité pour choisir un nouveau mot de passe.")}</p>
+        <form id="f" novalidate>
+          <div class="field"><label for="email">${T("E-mail", "E-mail")}</label><input id="email" type="email" autocomplete="email" required value="${esc(email0)}"></div>
+          <div class="co-actions"><button class="btn btn-ink" type="submit">${T("Receive a code →", "Recevoir un code →")}</button><button class="linkbtn" type="button" id="retour">${T("Back", "Retour")}</button></div>
+          <p class="form-msg" id="m" role="status"></p>
+        </form>
+      </div>`;
+    $("retour").addEventListener("click", () => authView("login"));
+    $("f").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const email = $("email").value.trim().toLowerCase();
+      if (!email) return msg($("m"), T("Fill in your e-mail.", "Indiquez votre e-mail."), "err");
+      msg($("m"), T("Sending…", "Envoi…"));
+      const { error } = await sb.auth.resetPasswordForEmail(email);
+      if (error) return msg($("m"), authErr(error), "err");
+      codeCtx = { email, type: "recovery" };
+      codeView();
+    });
+  }
+
+  // ---------- Mes matchs ----------
+  const pillClass = (e) => (e === "a_pointer" ? "turn" : e === "termine" ? "done" : e === "erreur" ? "err" : ["preparation", "calcul", "controle"].includes(e) ? "work" : "");
+  const frise = (e) => { const i = ETATS.findIndex((x) => x.k === e); return `<div class="frise" aria-hidden="true">${ETATS.map((_, j) => `<span class="${j < i ? "on" : j === i ? "now" : ""}"></span>`).join("")}</div>`; };
+  const quand = (m) => (m.date_match ? dateFmt().format(new Date(m.date_match + "T12:00:00")) : "");
+
+  async function matchsView() {
+    view.innerHTML = `<p class="muted">${T("Loading…", "Chargement…")}</p>`;
+    const { data, error } = await sb.from("matchs").select("id,titre,adversaire,date_match,etat,message,cree_le").eq("coach_id", session.user.id).order("cree_le", { ascending: false });
+    if (error) { view.innerHTML = `<p class="form-msg err">${esc(error.message)}</p>`; return; }
+    view.innerHTML = `
+      <div class="co-head">
+        <div><p class="label">${T("Your space", "Votre espace")}</p><h1>${T("My matches", "Mes matchs")}</h1></div>
+        <a class="btn btn-ink" href="#/nouveau">${T("+ New match", "+ Nouveau match")}</a>
+      </div>
+      <div class="co-list">${data.length ? data.map((m) => `
+        <a class="co-card co-match" href="#/match/${m.id}">
+          <div><h2>${esc(m.titre)}</h2><p class="meta">${esc([quand(m), m.adversaire && T("vs ", "contre ") + m.adversaire].filter(Boolean).join(" · "))}</p></div>
+          <span class="pill ${pillClass(m.etat)}">${esc(etatNom(m.etat))}</span>
+          ${m.etat !== "erreur" ? frise(m.etat) : ""}
+        </a>`).join("") : `<div class="co-card empty"><p>${T("No match yet.", "Aucun match pour l'instant.")}</p><p class="small" style="margin-top:6px">${T("Send your first video to start.", "Envoyez votre première vidéo pour commencer.")}</p></div>`}
+      </div>`;
+  }
+
+  // ---------- Nouveau match ----------
+  function nouveauView() {
+    const fichierOk = CIPRIO_VIDEO.disponible();
+    view.innerHTML = `
+      <a class="back" href="#/">← ${T("My matches", "Mes matchs")}</a>
+      <div class="co-card" style="max-width:640px">
+        <h1 style="font-size:1.8rem;margin-bottom:20px">${T("New match", "Nouveau match")}</h1>
+        <form id="f" novalidate>
+          <div class="field"><label for="adv">${T("Opponent", "Adversaire")}</label><input id="adv" required></div>
+          <div class="field"><label for="date">${T("Match date", "Date du match")}</label><input id="date" type="date"></div>
+          <div class="field"><label for="dom">${T("Venue", "Lieu")}</label><select id="dom"><option value="1">${T("Home", "Domicile")}</option><option value="0">${T("Away", "Extérieur")}</option></select></div>
+          <p class="field" style="margin:18px 0 8px"><label>${T("The video", "La vidéo")}</label></p>
+          <label class="radio ${fichierOk ? "" : "off"}"><input type="radio" name="src" value="fichier" ${fichierOk ? "" : "disabled"}><span>${T("Upload the file", "Envoyer le fichier")}<small>${fichierOk ? T("Veo export, 3 to 8 GB.", "Export Veo, 3 à 8 Go.") : T("Coming soon: video storage is being set up.", "Bientôt : le stockage des vidéos est en cours de mise en place.")}</small></span></label>
+          <label class="radio"><input type="radio" name="src" value="lien" checked><span>${T("Veo share link", "Lien de partage Veo")}<small>${T("Ciprio fetches the video from Veo.", "Ciprio récupère la vidéo sur Veo.")}</small></span></label>
+          <label class="radio"><input type="radio" name="src" value="local"><span>${T("Ciprio already has the video", "Ciprio a déjà la vidéo")}<small>${T("Sent another way (test matches).", "Envoyée autrement (matchs de test).")}</small></span></label>
+          <div class="field" id="lienbox"><label for="lien">${T("Link", "Lien")}</label><input id="lien" type="url" placeholder="https://app.veo.co/matches/…"></div>
+          <div class="field" id="fichbox" hidden><input id="fich" type="file" accept="video/*"></div>
+          <div class="co-actions"><button class="btn btn-ink" type="submit">${T("Create the match →", "Créer le match →")}</button></div>
+          <p class="form-msg" id="m" role="status"></p>
+        </form>
+      </div>`;
+    const src = () => view.querySelector("input[name=src]:checked").value;
+    view.querySelectorAll("input[name=src]").forEach((r) => r.addEventListener("change", () => { $("lienbox").hidden = src() !== "lien"; $("fichbox").hidden = src() !== "fichier"; }));
+    $("f").addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const m = $("m"), adv = $("adv").value.trim();
+      if (!adv) return msg(m, T("Fill in the opponent.", "Indiquez l'adversaire."), "err");
+      let video = { type: src() };
+      if (video.type === "lien") {
+        const lien = $("lien").value.trim();
+        if (!/^https?:\/\//.test(lien)) return msg(m, T("Paste the Veo share link.", "Collez le lien de partage Veo."), "err");
+        video.lien = lien;
+      }
+      if (video.type === "fichier" && !$("fich").files[0]) return msg(m, T("Choose the video file.", "Choisissez le fichier vidéo."), "err");
+      msg(m, T("Creating…", "Création…"));
+      const rec = { coach_id: session.user.id, titre: (CIPRIO.lang() === "fr" ? "Contre " : "vs ") + adv, adversaire: adv, date_match: $("date").value || null, domicile: $("dom").value === "1", video, etat: "cree" };
+      const { data, error } = await sb.from("matchs").insert(rec).select("id").single();
+      if (error) return msg(m, error.message, "err");
+      if (video.type === "fichier") {
+        try { await CIPRIO_VIDEO.envoyer(data.id, $("fich").files[0], (p) => msg(m, T("Uploading… ", "Envoi… ") + Math.round(p * 100) + " %")); }
+        catch (e) { return msg(m, String(e.message || e), "err"); }
+      }
+      location.hash = "#/match/" + data.id;
+    });
+  }
+
+  // ---------- Fiche d'un match ----------
+  async function matchView(id) {
+    view.innerHTML = `<p class="muted">${T("Loading…", "Chargement…")}</p>`;
+    const [{ data: m, error }, { count: nImg }, { count: nFait }] = await Promise.all([
+      sb.from("matchs").select("*").eq("id", id).maybeSingle(),
+      sb.from("images_pointage").select("id", { count: "exact", head: true }).eq("match_id", id),
+      sb.from("pointages").select("image_id", { count: "exact", head: true }).eq("match_id", id),
+    ]);
+    if (error || !m) { view.innerHTML = `<a class="back" href="#/">← ${T("My matches", "Mes matchs")}</a><p class="form-msg err">${T("Match not found.", "Match introuvable.")}</p>`; return; }
+    const i = ETATS.findIndex((x) => x.k === m.etat);
+    const vid = m.video || {};
+    const vidTxt = vid.type === "lien" ? T("Veo link", "Lien Veo") : vid.type === "local" ? T("Already at Ciprio", "Déjà chez Ciprio") : vid.type === "fichier" ? (vid.nom || T("File", "Fichier")) : "–";
+    let action = "";
+    if (m.etat === "a_pointer") action = `<div class="callout"><p><b>${T("It's your turn.", "C'est à vous.")}</b> ${T("Point a few markings of the pitch on the images Ciprio chose. About 5 minutes.", "Pointez quelques repères du terrain sur les images choisies par Ciprio. Environ 5 minutes.")}${nImg ? ` <span class="muted">(${nFait || 0}/${nImg} ${T("images done", "images faites")})</span>` : ""}</p><a class="btn btn-ink" href="/app/pointage?match=${m.id}">${T("Set up the pitch →", "Régler le terrain →")}</a></div>`;
+    else if (m.etat === "erreur") action = `<div class="callout err"><p><b>${T("A problem occurred.", "Un problème est survenu.")}</b> ${esc(m.message || "")}</p><p class="small">${T("Ciprio has been notified.", "Ciprio est prévenu.")}</p></div>`;
+    else if (m.etat === "cree") action = `<div class="callout"><p>${T("Ciprio will fetch the video and prepare the images to point. You'll see it here.", "Ciprio va récupérer la vidéo et préparer les images à pointer. Vous le verrez ici.")}</p></div>`;
+    else if (m.etat === "pointage_fini" && nImg) action = `<div class="callout"><p>${T("Pitch set up ✓ Ciprio now tracks the whole match.", "Terrain réglé ✓ Ciprio suit maintenant tout le match.")}</p><a class="btn btn-line" href="/app/pointage?match=${m.id}">${T("See my markings", "Revoir mes repères")}</a></div>`;
+    else if (m.message) action = `<div class="callout"><p>${esc(m.message)}</p></div>`;
+    view.innerHTML = `
+      <a class="back" href="#/">← ${T("My matches", "Mes matchs")}</a>
+      <div class="co-head"><div><p class="label">${esc(quand(m))}</p><h1>${esc(m.titre)}</h1></div><span class="pill ${pillClass(m.etat)}">${esc(etatNom(m.etat))}</span></div>
+      <div class="co-two">
+        <div class="co-card">
+          <h2 style="font-size:1.15rem">${T("Analysis", "Analyse")}</h2>
+          <ol class="steps">${ETATS.map((e, j) => `<li class="${m.etat === "erreur" ? "" : j < i ? "on" : j === i ? "now" : ""}"><b>${j < i ? "✓" : j + 1}</b>${esc(T(e.en, e.fr))}</li>`).join("")}</ol>
+          ${action}
+        </div>
+        <div class="co-card">
+          <h2 style="font-size:1.15rem;margin-bottom:12px">${T("Match", "Match")}</h2>
+          <p class="small"><span class="muted">${T("Opponent", "Adversaire")} :</span> ${esc(m.adversaire || "–")}</p>
+          <p class="small"><span class="muted">${T("Venue", "Lieu")} :</span> ${m.domicile === null ? "–" : m.domicile ? T("Home", "Domicile") : T("Away", "Extérieur")}</p>
+          <p class="small"><span class="muted">${T("Video", "Vidéo")} :</span> ${esc(vidTxt)}</p>
+          <p class="small"><span class="muted">${T("Last update", "Dernière mise à jour")} :</span> ${esc(new Date(m.maj_le).toLocaleString(CIPRIO.lang() === "fr" ? "fr-FR" : "en-GB"))}</p>
+        </div>
+      </div>`;
+  }
+
+  // ---------- navigation ----------
+  async function route() {
+    ({ data: { session } } = await sb.auth.getSession());
+    $("userbox").hidden = !session;
+    $("logout").textContent = T("Log out", "Se déconnecter");
+    if (!session) { if (codeCtx) return codeView(); return authView(location.hash === "#/inscription" ? "signup" : "login"); }
+    $("who").textContent = session.user.email;
+    const h = location.hash.replace(/^#/, "") || "/";
+    if (h === "/nouveau") return nouveauView();
+    const mm = h.match(/^\/match\/([0-9a-f-]{36})$/);
+    if (mm) return matchView(mm[1]);
+    return matchsView();
+  }
+  $("logout").addEventListener("click", async () => { await sb.auth.signOut(); location.hash = "#/"; route(); });
+  window.addEventListener("hashchange", route);
+  sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") route(); });
+  route();
+})();
+</script>
+</body>
+</html>

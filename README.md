@@ -31,3 +31,16 @@ Site statique déployé par Vercel (projet `ciprio`, https://ciprio.ai) à chaqu
 - `contact_messages` : messages du formulaire de contact.
 
 Les règles RLS autorisent uniquement l'insertion depuis le site. Consultation : Supabase → Table Editor.
+
+## Espace coach (`/app`, chantier A)
+
+Le coach crée son compte, envoie ses matchs, règle le terrain et suit l'état de chaque analyse. Pages non indexées.
+
+- `app/index.html` : connexion (e-mail + mot de passe ; code reçu par e-mail à la création du compte et pour un mot de passe oublié), « Mes matchs », « Nouveau match », fiche d'un match.
+- `app/pointage.html` : page de pointage du terrain. **Fichier généré** depuis `ciprio-lab/annot_modeles/index.html` par `python tools/porter_pointage.py` : ne jamais la modifier à la main, relancer le script après chaque changement de la page du labo.
+- `assets/app/commun.js` : connexion Supabase (clé publique), langue, noms des états d'un match.
+- `assets/app/pointage-pont.js` : redirige les appels de la page du labo (`/api/list`, `/api/label`, `/api/refine`, `/api/prevoir`, `/api/completer`) vers Supabase. Les calculs passent par la table `taches` et sont faits par `ciprio-lab/pont_site.py ecouter`.
+- `assets/app/video.js` : interface unique d'envoi des vidéos, à brancher sur le stockage choisi par le fondateur.
+- Admin, onglet « Matchs » : tous les matchs, leur état, le journal des tâches, et si le pont tourne.
+
+Tables Supabase (projet `pazzrgvkgmdgqmtscspl`) : `profils`, `matchs`, `images_pointage`, `pointages` (+ `pointages_historique`, chaque version des clics, jamais effacée), `taches`, `travailleurs` ; dépôt privé `pointage` (images à pointer). Droits : le coach ne voit que ses matchs, l'admin voit tout, le pont utilise la clé secrète (jamais dans le navigateur).
