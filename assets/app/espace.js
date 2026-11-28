@@ -256,13 +256,13 @@
           <button role="tab" data-t="login" aria-selected="${tab === "login"}">${T("Log in", "Se connecter")}</button>
           <button role="tab" data-t="signup" aria-selected="${tab === "signup"}">${T("Create an account", "Créer un compte")}</button>
         </div>
-        <form id="f" novalidate>
+        <form id="f" method="post" action="/app" autocomplete="on" novalidate>
           ${tab === "signup" ? `
           <div class="field"><label for="nom">${T("Your name", "Votre nom")}</label><input id="nom" autocomplete="name" required></div>
           <div class="field"><label for="club">${T("Club", "Club")}</label><input id="club" autocomplete="organization"></div>` : ""}
-          <div class="field"><label for="email">${T("E-mail", "E-mail")}</label><input id="email" type="email" autocomplete="email" required></div>
+          <div class="field"><label for="email">${T("E-mail", "E-mail")}</label><input id="email" name="username" type="email" autocomplete="username" autocapitalize="none" spellcheck="false" required></div>
           <div class="field"><label for="mdp">${T("Password", "Mot de passe")}${tab === "signup" ? ` <small>${T("(8 characters min.)", "(8 caractères min.)")}</small>` : ""}</label>
-            <input id="mdp" type="password" autocomplete="${tab === "signup" ? "new-password" : "current-password"}" minlength="8" required></div>
+            <input id="mdp" name="password" type="password" autocomplete="${tab === "signup" ? "new-password" : "current-password"}" minlength="8" required></div>
           <div class="co-actions">
             <button class="btn btn-ink" type="submit">${tab === "signup" ? T("Create my account →", "Créer mon compte →") : T("Log in →", "Se connecter →")}</button>
             ${tab === "login" ? `<button class="linkbtn" type="button" id="oubli">${T("Forgot your password?", "Mot de passe oublié ?")}</button>` : ""}
@@ -301,9 +301,25 @@
         return codeView(T("Your e-mail isn't confirmed yet: we've just sent you a new code.", "Votre e-mail n'est pas encore confirmé : nous venons de vous envoyer un nouveau code."));
       }
       if (error) return msg(m, authErr(error), "err");
+      memoriser(email, password);
       location.hash = "#/";
       route();
     });
+    if (tab === "login") proposerEnregistre();
+  }
+  // Le gestionnaire de mots de passe du navigateur : on lui confie les identifiants après une connexion réussie,
+  // et à l'écran de connexion on lui demande ceux déjà enregistrés pour ce site (Chrome, Edge : un clic et c'est fini).
+  function memoriser(email, password) {
+    try { if (window.PasswordCredential && navigator.credentials) navigator.credentials.store(new PasswordCredential({ id: email, password, name: email })).catch(() => {}); } catch {}
+  }
+  async function proposerEnregistre() {
+    try {
+      if (!window.PasswordCredential || !navigator.credentials) return;
+      const c = await navigator.credentials.get({ password: true, mediation: "optional" });
+      if (!c || !c.password || !$("f") || !$("email")) return;
+      $("email").value = c.id; $("mdp").value = c.password;
+      $("f").requestSubmit();
+    } catch {}
   }
 
   function codeView(note) {
