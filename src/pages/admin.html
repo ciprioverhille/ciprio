@@ -32,6 +32,7 @@ EXTRA=<meta name="robots" content="noindex,nofollow">
     <button role="tab" id="tab-reussi" aria-controls="p-reussi" data-tab="reussi">Réalisations</button>
     <button role="tab" id="tab-etapes" aria-controls="p-etapes" data-tab="etapes">Étapes</button>
     <button role="tab" id="tab-prospection" aria-controls="p-prospection" data-tab="prospection">Prospection <span class="tab-count" id="reply-count"></span></button>
+    <button role="tab" id="tab-modele" aria-controls="p-modele" data-tab="modele">Modèle IA <span class="tab-count" id="corr-count"></span></button>
   </div>
 
   <!-- Onglet Dépenses -->
@@ -121,6 +122,36 @@ EXTRA=<meta name="robots" content="noindex,nofollow">
 
     <h2 class="adm-h2">Messages reçus par le formulaire Contact</h2>
     <div id="cm"></div>
+  </section>
+
+  <!-- Onglet Modèle IA : lecture seule des tables modele_* remplies par ciprio-lab (modele_registre.py) -->
+  <section class="adm-panel" role="tabpanel" id="p-modele" aria-labelledby="tab-modele" hidden>
+    <div class="adm-sec-head">
+      <div><h1>Modèle IA</h1><p class="muted">Ce que le modèle a appris, version après version : il trouve seul les lignes du terrain sur chaque image. Le but : moins de <b>3 px</b> d'écart, même sur un stade qu'il n'a jamais vu. Rempli automatiquement après chaque entraînement et chaque banc d'essai ; lecture seule.</p></div>
+    </div>
+    <div class="adm-kpis">
+      <div class="adm-card"><span class="k">Version en service</span><b id="k-mod-ver">–</b><small id="k-mod-ver-d"></small></div>
+      <div class="adm-card"><span class="k">Stades jamais vus</span><b id="k-mod-test">–</b><small id="k-mod-test-d"></small></div>
+      <div class="adm-card"><span class="k">Stades appris</span><b id="k-mod-train">–</b><small id="k-mod-train-d"></small></div>
+    </div>
+
+    <h2 class="adm-h2">Courbe d'apprentissage</h2>
+    <p class="muted adm-small">Écart médian entre les lignes trouvées par le modèle et la vraie peinture, selon le nombre de stades appris. Plus c'est bas, mieux c'est ; échelle logarithmique.</p>
+    <div class="adm-card md-chart" id="md-chart"></div>
+
+    <h2 class="adm-h2">Versions</h2>
+    <p class="muted adm-small">Clique sur une version pour voir son banc d'essai, match par match.</p>
+    <div class="adm-scroll" style="margin-top:12px"><table class="adm-table md-table"><thead><tr><th>Version</th><th>Date</th><th class="num">Stades appris</th><th class="num">Exemples</th><th>Matériel</th><th class="num">Durée</th><th class="num">Coût</th><th class="num">Jamais vus</th><th class="num">Appris</th><th>État</th></tr></thead><tbody id="md-versions"></tbody></table></div>
+
+    <h2 class="adm-h2" id="md-scores-title">Banc d'essai</h2>
+    <div id="md-scores"></div>
+
+    <h2 class="adm-h2">Matchs</h2>
+    <p class="muted adm-small">Les matchs dont le modèle apprend (« appris ») et ceux gardés de côté pour le tester (« test », jamais montrés pendant l'entraînement).</p>
+    <div class="adm-scroll" style="margin-top:12px"><table class="adm-table"><thead><tr><th>Match</th><th>Stade</th><th>Rôle</th><th>Origine</th><th>Statut</th><th class="num">Exemples</th><th class="num">Écart d'ajustement</th></tr></thead><tbody id="md-matchs"></tbody></table></div>
+
+    <h2 class="adm-h2">Échecs et corrections</h2>
+    <div id="md-corr"></div>
   </section>
 </main>
 
@@ -368,6 +399,30 @@ body{background:var(--bg)}
 .pr-check label{display:flex;gap:8px;align-items:center;font-size:.92rem;font-family:inherit;text-transform:none;letter-spacing:normal;color:var(--ink);padding-bottom:10px}
 .pr-check input{width:18px;height:18px;margin:0;padding:0;flex:none}
 .pr-dlg{width:min(760px,calc(100vw - 32px))}
+.md-chart{position:relative;padding:16px 16px 8px}
+.md-chart svg{display:block;width:100%;height:auto;overflow:visible}
+.md-chart .ax{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.md-chart .grid{stroke:var(--line);stroke-width:1}
+.md-chart .goal{stroke:#1d6b37;stroke-width:1.5;stroke-dasharray:5 4}
+.md-chart .goal-t{font-family:var(--f-mono);font-size:11px;fill:#1d6b37}
+.md-chart .lbl{font-size:12px;fill:var(--ink);font-weight:500}
+.md-chart .hit{fill:transparent;cursor:default}
+.md-legend{display:flex;gap:18px;flex-wrap:wrap;font-size:.84rem;color:var(--ink-2);margin:0 0 8px}
+.md-legend span{display:inline-flex;align-items:center;gap:6px}
+.md-legend i{display:inline-block;width:14px;height:3px;border-radius:2px}
+.md-tip{position:absolute;pointer-events:none;background:var(--dark);color:#fff;font-size:.8rem;line-height:1.45;padding:8px 10px;border-radius:8px;white-space:nowrap;transform:translate(-50%,calc(-100% - 12px));z-index:5}
+.md-tip b{font-weight:600}
+.md-table tbody tr{cursor:pointer}
+.md-table td:first-child{min-width:260px}
+.md-table td:nth-child(5){min-width:150px}
+.md-table tbody tr:hover td{background:var(--bg)}
+.md-table tr.sel td{background:#eef3ff}
+.bdg{display:inline-block;font-family:var(--f-mono);font-size:.64rem;text-transform:uppercase;letter-spacing:.04em;padding:2px 8px;border-radius:99px;border:1px solid var(--line);white-space:nowrap;margin:1px 4px 1px 0;color:var(--muted)}
+.bdg.ok{color:#1d6b37;background:#e6f4ea;border-color:#b9dfc5}
+.bdg.ko{color:#a3281c;background:#fdecea;border-color:#f3c3bd}
+.bdg.on{color:#2a4fb8;background:#eef3ff;border-color:#cfdcff}
+.bdg.wait{color:#7a5600;background:#fff4dc;border-color:#f1d79a}
+.px-ok{color:#1d6b37;font-weight:600}.px-mid{color:#7a5600}.px-ko{color:#a3281c}
 @media (max-width:640px){
   .adm-user .muted{display:none}
   .adm-kpis{grid-template-columns:1fr}
@@ -468,6 +523,138 @@ body{background:var(--bg)}
     steplog = (st && st.data) || [];
     outreach = o.data || []; waitlist = w.data || []; contacts = m.data || [];
     render(); renderPros();
+    loadModel();
+  }
+
+  // ----- Modèle IA (lecture seule : tables modele_* écrites par ciprio-lab/modele_registre.py) -----
+  let mEnt = [], mScores = [], mMatchs = [], mCorr = [], mSel = null;
+  const SEUIL = 3;
+  const px = (v, d = 1) => (v === null || v === undefined ? "–" : Number(v) >= 999 ? "> 999 px" : Number(v).toLocaleString("fr-FR", { maximumFractionDigits: d, minimumFractionDigits: d }) + " px");
+  const pxc = (v) => (v === null || v === undefined ? "" : v <= SEUIL ? "px-ok" : v <= 6 ? "px-mid" : "px-ko");
+  const pct = (v) => (v === null || v === undefined ? "–" : Math.round(100 * v) + " %");
+  const dur = (s) => (!s ? "–" : s < 3600 ? Math.round(s / 60) + " min" : (s / 3600).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + " h");
+  const MSTATUT = { a_valider: ["À valider", "wait"], valide: ["Validé", "ok"], controle: ["Contrôle", "on"], refs: ["Repères pointés", ""], rejete: ["Rejeté", "ko"] };
+  const SPLIT = { train: "Appris", test: "Test" };
+  const SOURCE = { suivi: "Suivi automatique", refs: "Repères pointés" };
+
+  async function loadModel() {
+    const [e, s, m, c] = await Promise.all([
+      sb.from("modele_entrainements").select("*").order("debut", { ascending: true }),
+      sb.from("modele_scores").select("*").order("split", { ascending: false }).order("stade").order("match"),
+      sb.from("modele_matchs").select("*").order("split").order("stade").order("nom"),
+      sb.from("modele_corrections").select("*").order("cree_le", { ascending: false }),
+    ]);
+    const err = e.error || s.error || m.error || c.error;
+    if (err) { $("md-chart").innerHTML = '<p class="form-msg err">Erreur de chargement : ' + esc(err.message) + "</p>"; return; }
+    mEnt = e.data; mScores = s.data; mMatchs = m.data; mCorr = c.data;
+    if (!mSel || !mEnt.some((x) => x.id === mSel)) mSel = (mEnt.find((x) => x.en_service) || mEnt[mEnt.length - 1] || {}).id || null;
+    renderModel();
+  }
+
+  function renderModel() {
+    const last = mEnt[mEnt.length - 1], live = mEnt.find((x) => x.en_service);
+    $("k-mod-ver").textContent = live ? live.version : "Aucune";
+    $("k-mod-ver-d").textContent = live ? "en service depuis le " + dayFmt.format(new Date(live.fin || live.debut)) : last ? "dernière version : " + last.version + (last.au_niveau ? "" : " (pas au niveau)") : "aucun entraînement";
+    const kp = (id, v) => { $(id).innerHTML = v === null || v === undefined ? "–" : `<span class="${pxc(Number(v))}">${px(v)}</span>`; };
+    kp("k-mod-test", last?.ecart_median_test_px); kp("k-mod-train", last?.ecart_median_train_px);
+    $("k-mod-test-d").textContent = last ? "écart médian, " + (last.stades_test || []).length + " stades de test · objectif ≤ " + SEUIL + " px" : "";
+    $("k-mod-train-d").textContent = last ? "écart médian, " + (last.nb_stades_train ?? 0) + " stades appris" : "";
+    const open = mCorr.filter((x) => !x.integre_dans).length;
+    $("corr-count").textContent = open || "";
+
+    renderCurve();
+
+    const vname = (id) => (mEnt.find((x) => x.id === id) || {}).version || "?";
+    $("md-versions").innerHTML = mEnt.length ? [...mEnt].reverse().map((x) => `<tr data-ver="${x.id}" class="${x.id === mSel ? "sel" : ""}">
+      <td><b>${esc(x.version)}</b>${x.note ? `<br><small class="muted">${esc(x.note)}</small>` : ""}</td>
+      <td style="white-space:nowrap">${dayFmt.format(new Date(x.debut))}</td>
+      <td class="num" title="${esc((x.stades_train || []).join(", "))}">${x.nb_stades_train ?? "–"}</td>
+      <td class="num">${x.nb_exemples_train?.toLocaleString("fr-FR") ?? "–"}</td>
+      <td>${esc(x.materiel || "")}</td>
+      <td class="num">${dur(x.duree_s)}</td>
+      <td class="num">${x.cout_eur === null ? "–" : eur.format(x.cout_eur)}</td>
+      <td class="num ${pxc(num(x.ecart_median_test_px))}">${px(x.ecart_median_test_px)}</td>
+      <td class="num ${pxc(num(x.ecart_median_train_px))}">${px(x.ecart_median_train_px)}</td>
+      <td>${x.en_service ? '<span class="bdg on">En service</span>' : ""}${x.au_niveau ? '<span class="bdg ok">Au niveau</span>' : '<span class="bdg ko">Pas au niveau</span>'}</td></tr>`).join("")
+      : '<tr><td colspan="10" class="muted">Aucun entraînement pour l’instant.</td></tr>';
+
+    // Banc d'essai de la version choisie
+    const sel = mEnt.find((x) => x.id === mSel);
+    $("md-scores-title").textContent = sel ? "Banc d'essai · " + sel.version : "Banc d'essai";
+    const sc = mScores.filter((x) => x.entrainement_id === mSel);
+    const scTable = (list) => `<div class="adm-scroll"><table class="adm-table"><thead><tr><th>Match</th><th>Stade</th><th class="num">Images</th><th class="num">Échecs</th><th class="num">Écart médian</th><th class="num">90 % des images sous</th><th class="num">≤ 3 px</th><th class="num">> 20 px</th><th class="num">Modèle</th><th class="num">Suivi actuel</th></tr></thead><tbody>
+      ${list.map((x) => `<tr><td>${esc(x.match)}</td><td>${esc(x.stade || "")}</td><td class="num">${x.images ?? "–"}</td><td class="num">${x.echecs || 0}</td>
+        <td class="num ${pxc(num(x.ecart_median_px))}">${px(x.ecart_median_px)}</td><td class="num">${px(x.p90_px, 0)}</td>
+        <td class="num">${pct(x.part_le_3px)}</td><td class="num">${pct(x.part_gt_20px)}</td>
+        <td class="num">${x.ms_par_image === null ? "–" : Math.round(x.ms_par_image) + " ms/image"}</td>
+        <td class="num">${x.suivi_actuel_s_par_image === null ? "–" : Number(x.suivi_actuel_s_par_image).toLocaleString("fr-FR", { maximumFractionDigits: 1 }) + " s/image"}</td></tr>`).join("")}</tbody></table></div>`;
+    $("md-scores").innerHTML = !sc.length ? '<p class="blk-empty">Aucun résultat de banc pour cette version.</p>' :
+      [["test", "Stades jamais vus", "Le vrai test : le modèle n'a jamais vu ces stades."], ["train", "Stades appris", "Images de contrôle prises dans les stades appris."]].map(([k, t, sub]) => {
+        const l = sc.filter((x) => x.split === k);
+        return l.length ? `<p class="adm-small" style="margin:14px 0 8px"><b>${t}</b> <span class="muted">— ${sub}</span></p>` + scTable(l) : "";
+      }).join("") + `<p class="muted adm-small" style="margin-top:10px">« Modèle » : temps de calcul du modèle par image ; « Suivi actuel » : temps de la méthode actuelle (étape 1) pour comparer.</p>`;
+
+    // Matchs
+    $("md-matchs").innerHTML = mMatchs.length ? mMatchs.map((x) => {
+      const [lab, cls] = MSTATUT[x.statut] || [x.statut, ""];
+      return `<tr><td>${esc(x.nom)}${x.note ? `<br><small class="muted">${esc(x.note)}</small>` : ""}</td><td>${esc(x.stade || "")}</td>
+        <td><span class="bdg ${x.split === "test" ? "on" : ""}">${SPLIT[x.split] || esc(x.split || "")}</span></td><td>${SOURCE[x.source] || esc(x.source || "")}</td>
+        <td><span class="bdg ${cls}">${esc(lab)}</span>${x.valide_le ? `<br><small class="muted">le ${dayFmt.format(new Date(x.valide_le))}</small>` : ""}</td>
+        <td class="num">${x.nb_exemples?.toLocaleString("fr-FR") ?? "–"}</td><td class="num">${px(x.ecart_ajustement_px, 2)}</td></tr>`;
+    }).join("") : '<tr><td colspan="7" class="muted">Aucun match pour l’instant.</td></tr>';
+
+    // Corrections
+    const cBlk = (title, sub, list) => `<div class="blk"><div class="blk-head"><h3>${title}<small>${sub}</small></h3><span class="blk-total">${list.length}</span></div>
+      ${list.length ? `<ul>${list.map((x) => `<li style="cursor:default"><span class="nm"><b>${esc(x.probleme)}</b><small>${x.correction ? esc(x.correction) : ""}${x.match ? " — match " + esc(x.match) : ""}${x.entrainement_id ? " — vu sur " + esc(vname(x.entrainement_id)) : ""}${x.integre_dans ? " — intégré dans " + esc(vname(x.integre_dans)) : ""}${x.exemples_ajoutes ? " — " + x.exemples_ajoutes + " exemples ajoutés" : ""}${x.commit_git ? " — commit " + esc(String(x.commit_git).slice(0, 7)) : ""}</small></span>
+        <span class="amt" style="font-weight:400"><small>${short(x.cree_le)}${x.par ? " · " + esc(x.par) : ""}</small></span></li>`).join("")}</ul>` : '<p class="blk-empty">Aucune.</p>'}</div>`;
+    $("md-corr").innerHTML = cBlk("Ouvertes", "Problème repéré, correction pas encore intégrée dans une version.", mCorr.filter((x) => !x.integre_dans))
+      + cBlk("Intégrées", "Corrigées dans une version entraînée.", mCorr.filter((x) => x.integre_dans));
+  }
+
+  // Courbe : axe x = nombre de stades appris, axe y (log) = écart médian ; seuil à 3 px
+  function renderCurve() {
+    const box = $("md-chart");
+    const pts = mEnt.filter((x) => x.ecart_median_test_px !== null || x.ecart_median_train_px !== null);
+    if (!pts.length) { box.innerHTML = '<p class="blk-empty">Pas encore de version entraînée.</p>'; return; }
+    const W = 720, H = 280, L = 52, R = 185, T = 14, B = 40;
+    const xs = pts.map((p) => p.nb_stades_train || 0);
+    let x0 = Math.min(...xs), x1 = Math.max(...xs);
+    if (x0 === x1) { x0 = Math.max(0, x0 - 2); x1 = x1 + 4; } else { const pad = (x1 - x0) * 0.08; x0 = Math.max(0, x0 - pad); x1 += pad; }
+    const vals = pts.flatMap((p) => [p.ecart_median_test_px, p.ecart_median_train_px]).filter((v) => v !== null).map(Number);
+    const y0 = 1, y1 = Math.max(30, Math.pow(10, Math.ceil(Math.log10(Math.max(...vals) * 1.2) * 2) / 2));
+    const X = (v) => L + ((v - x0) / (x1 - x0)) * (W - L - R);
+    const Y = (v) => T + (1 - (Math.log10(Math.max(v, y0)) - Math.log10(y0)) / (Math.log10(y1) - Math.log10(y0))) * (H - T - B);
+    const yt = [1, 3, 10, 30, 100, 300, 1000].filter((v) => v <= y1);
+    let xt = []; const step = Math.max(1, Math.ceil((x1 - x0) / 8));
+    for (let v = Math.ceil(x0); v <= x1; v += step) xt.push(v);
+    const SER = [["ecart_median_test_px", "Stades jamais vus", "#d9730d", "circle"], ["ecart_median_train_px", "Stades appris", "#2a4fb8", "square"]];
+    const mark = (shape, x, y, c) => shape === "circle" ? `<circle cx="${x}" cy="${y}" r="5" fill="${c}" stroke="#fff" stroke-width="2"/>` : `<rect x="${x - 5}" y="${y - 5}" width="10" height="10" rx="2" fill="${c}" stroke="#fff" stroke-width="2"/>`;
+    let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Courbe d'apprentissage : écart médian selon le nombre de stades appris">`;
+    svg += yt.map((v) => `<line class="grid" x1="${L}" x2="${W - R}" y1="${Y(v)}" y2="${Y(v)}"/><text class="ax" x="${L - 8}" y="${Y(v) + 4}" text-anchor="end">${v} px</text>`).join("");
+    svg += xt.map((v) => `<text class="ax" x="${X(v)}" y="${H - B + 18}" text-anchor="middle">${v}</text>`).join("");
+    svg += `<text class="ax" x="${(L + W - R) / 2}" y="${H - 4}" text-anchor="middle">nombre de stades appris</text>`;
+    svg += `<line class="goal" x1="${L}" x2="${W - R}" y1="${Y(SEUIL)}" y2="${Y(SEUIL)}"/><text class="goal-t" x="${W - R + 8}" y="${Y(SEUIL) + 4}">objectif 3 px</text>`;
+    for (const [k, name, c, shape] of SER) {
+      const p = pts.filter((q) => q[k] !== null).map((q) => [X(q.nb_stades_train || 0), Y(Number(q[k])), q]);
+      if (!p.length) continue;
+      if (p.length > 1) svg += `<polyline points="${p.map((q) => q[0] + "," + q[1]).join(" ")}" fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`;
+      svg += p.map((q) => mark(shape, q[0], q[1], c)).join("");
+      const lp = p[p.length - 1];
+      svg += `<text class="lbl" x="${W - R + 8}" y="${lp[1] + (k === "ecart_median_test_px" ? -2 : 14)}">${name} · ${px(lp[2][k])}</text>`;
+    }
+    svg += pts.map((q) => { const xx = X(q.nb_stades_train || 0); return `<rect class="hit" data-v="${q.id}" x="${xx - 18}" y="${T}" width="36" height="${H - T - B}"/>`; }).join("");
+    svg += "</svg>";
+    box.innerHTML = `<div class="md-legend">${SER.map(([, n, c]) => `<span><i style="background:${c}"></i>${n}</span>`).join("")}<span><i style="background:#1d6b37"></i>Objectif ≤ 3 px</span></div>${svg}<div class="md-tip" hidden></div>`;
+    const tip = box.querySelector(".md-tip"), sv = box.querySelector("svg");
+    sv.addEventListener("mousemove", (ev) => {
+      const h = ev.target.closest(".hit"); if (!h) { tip.hidden = true; return; }
+      const q = mEnt.find((x) => x.id === h.dataset.v), r = sv.getBoundingClientRect(), br = box.getBoundingClientRect(), s = r.width / W;
+      tip.innerHTML = `<b>${esc(q.version)}</b> · ${q.nb_stades_train} stades appris<br>Jamais vus : ${px(q.ecart_median_test_px)}<br>Appris : ${px(q.ecart_median_train_px)}<br>${dayFmt.format(new Date(q.debut))}`;
+      tip.style.left = (r.left - br.left + X(q.nb_stades_train || 0) * s) + "px";
+      tip.style.top = (r.top - br.top + Y(Math.max(Number(q.ecart_median_test_px ?? 0), Number(q.ecart_median_train_px ?? 0))) * s) + "px";
+      tip.hidden = false;
+    });
+    sv.addEventListener("mouseleave", () => { tip.hidden = true; });
   }
 
   // ----- Prospection -----
@@ -775,7 +962,7 @@ body{background:var(--bg)}
   }
 
   // ----- Onglets (mémorisés dans l'adresse : #depenses, #recettes, #taches, #reussi) -----
-  const TABS = ["depenses", "recettes", "taches", "reussi", "etapes", "prospection"];
+  const TABS = ["depenses", "recettes", "taches", "reussi", "etapes", "prospection", "modele"];
   function showTab(name) {
     if (!TABS.includes(name)) name = "depenses";
     for (const t of TABS) {
@@ -839,6 +1026,7 @@ body{background:var(--bg)}
   $("task-blocks").addEventListener("click", (e) => { const li = e.target.closest("[data-task]"); if (li) openTask(tasks.find((x) => x.id === li.dataset.task)); });
   $("rev-blocks").addEventListener("click", (e) => { const li = e.target.closest("[data-rev]"); if (li) openRev(revenues.find((r) => r.id === li.dataset.rev)); });
   $("o-save").addEventListener("click", saveOut);
+  $("md-versions").addEventListener("click", (e) => { const tr = e.target.closest("[data-ver]"); if (tr) { mSel = tr.dataset.ver; renderModel(); } });
   ["pr-list", "pr-replies"].forEach((id) => $(id).addEventListener("click", (e) => { const li = e.target.closest("[data-out]"); if (li) openOut(outreach.find((x) => String(x.id) === li.dataset.out)); }));
   $("pr-filters").addEventListener("click", (e) => {
     const b = e.target.closest("[data-f]"); if (!b) return;
