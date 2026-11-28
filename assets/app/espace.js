@@ -27,6 +27,7 @@
     trash: I('<path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/>'),
     eye: I('<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'),
     eyeOff: I('<path d="M10.6 5.1A10.9 10.9 0 0 1 12 5c6.4 0 10 7 10 7a17.6 17.6 0 0 1-3.2 4.2M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a10.5 10.5 0 0 0 5.4-1.5"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="M3 3l18 18"/>'),
+    tuto: I('<circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/>'),
     lock: I('<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>'),
   };
 
@@ -57,7 +58,25 @@
     });
     return out;
   }
-  const pitchSVG = (sys) => `<div class="pitch" aria-label="${esc(sys || "")}"><span class="ring"></span>${placement(sys).map(([x, y]) => `<i style="left:${x}%;top:${y}%"></i>`).join("")}</div>`;
+  // compo = [joueur_id | null] par place (0 = gardien) : numéro dans le rond, nom dessous
+  const pitchSVG = (sys, compo) => `<div class="pitch${compo ? " big" : ""}" aria-label="${esc(sys || "")}"><span class="ring"></span>${placement(sys).map(([x, y], k) => {
+    const j = compo && compo[k] ? D.joueurs.find((x) => x.id === compo[k]) : null;
+    return `<i style="left:${x}%;top:${y}%">${j && j.numero != null ? j.numero : ""}</i>${j ? `<em style="left:${x}%;top:${y}%">${esc(j.nom)}</em>` : ""}`;
+  }).join("")}</div>`;
+  // nom de chaque place d'un système : Gardien, Défenseur 1…, Milieu 1…, Attaquant 1…
+  function places(sys) {
+    const rows = String(sys || "4-3-3").split("-").map(Number).filter(Boolean);
+    const noms = rows.length === 3 ? [["Défenseur", "Defender"], ["Milieu", "Midfielder"], ["Attaquant", "Forward"]]
+      : rows.length === 4 ? [["Défenseur", "Defender"], ["Milieu déf.", "Def. mid"], ["Milieu off.", "Att. mid"], ["Attaquant", "Forward"]]
+      : rows.map((_, r) => [`Ligne ${r + 1}`, `Line ${r + 1}`]);
+    const out = [T("Goalkeeper", "Gardien")];
+    rows.forEach((n, r) => { for (let i = 0; i < n; i++) out.push(`${L() === "fr" ? noms[r][0] : noms[r][1]}${n > 1 ? " " + (i + 1) : ""}`); });
+    return out;
+  }
+  const nomJoueur = (j) => `${j.numero != null ? "#" + j.numero + " " : ""}${[j.prenom, j.nom].filter(Boolean).join(" ")}`;
+  const age = (d) => { if (!d) return null; const b = new Date(d + "T12:00:00"), n = new Date(); let a = n.getFullYear() - b.getFullYear(); if (n < new Date(n.getFullYear(), b.getMonth(), b.getDate())) a--; return a; };
+  const STATUTS = [["disponible", "Disponible", "Available"], ["blesse", "Blessé", "Injured"], ["suspendu", "Suspendu", "Suspended"], ["absent", "Absent", "Unavailable"]];
+  const statut = (k) => { const x = STATUTS.find((s) => s[0] === k); return x ? (L() === "fr" ? x[1] : x[2]) : ""; };
 
   // ---------------------------------------------------------------- langue
   const langUI = () => document.querySelectorAll(".co-lang button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lang === L())));
@@ -265,9 +284,10 @@
 
   function menu(h) {
     const aPointer = D.matchs.filter((x) => x.etat === "a_pointer").length;
-    const cur = (k) => (k === h || (k === "/videos" && h.startsWith("/match/")) || (k === "/plans" && h.startsWith("/plan/")) ? ' aria-current="page"' : "");
+    const cur = (k) => (k === h || (k === "/videos" && (h.startsWith("/match/") || h.startsWith("/videos"))) || (k === "/plans" && h.startsWith("/plan/")) || (k === "/parametres" && h.startsWith("/parametres")) ? ' aria-current="page"' : "");
     $("side").innerHTML = `
       <a class="primary" href="#/nouveau"${cur("/nouveau")}>${ICON.plus}${T("New video", "Nouvelle vidéo")}</a>
+      <a class="tuto" href="#/tuto"${cur("/tuto")}>${ICON.tuto}${T("How it works", "Comment ça marche")}</a>
       <a href="#/"${cur("/")}>${ICON.home}${T("Home", "Accueil")}</a>
       <a href="#/videos"${cur("/videos")}>${ICON.video}${T("Videos", "Vidéos")}${aPointer ? `<span class="badge">${aPointer}</span>` : ""}</a>
       <a href="#/rapports"${cur("/rapports")}>${ICON.report}${T("Reports", "Rapports")}</a>
@@ -309,10 +329,10 @@
       ${aPointer.length ? `<div class="callout" style="margin-bottom:18px"><p><b>${T("Your turn:", "À vous :")}</b> ${aPointer.length > 1 ? T(`${aPointer.length} matches are waiting for you to set up the pitch.`, `${aPointer.length} matchs attendent que vous régliez le terrain.`) : T(`set up the pitch of “${esc(aPointer[0].titre)}”. About 5 minutes.`, `réglez le terrain de « ${esc(aPointer[0].titre)} ». Environ 5 minutes.`)}</p>
         <a class="btn btn-ink btn-sm" href="${aPointer.length > 1 ? "#/videos" : "/app/pointage?match=" + aPointer[0].id}">${T("Set up the pitch →", "Régler le terrain →")}</a></div>` : ""}
       <div class="grid g4" style="margin-bottom:18px">
-        <div class="co-card kpi"><span class="k">${T("Videos", "Vidéos")}</span><b>${M.length}</b><small>${T("sent to Ciprio", "envoyées à Ciprio")}</small></div>
-        <div class="co-card kpi"><span class="k">${T("In progress", "En cours")}</span><b>${enCours.length + aPointer.length}</b><small>${aPointer.length ? T(`${aPointer.length} waiting for you`, `dont ${aPointer.length} pour vous`) : T("being analysed", "en analyse")}</small></div>
-        <div class="co-card kpi"><span class="k">${T("Reports", "Rapports")}</span><b>${finis.length}</b><small>${T("analyses completed", "analyses terminées")}</small></div>
-        <div class="co-card kpi"><span class="k">${T("Squad", "Effectif")}</span><b>${D.joueurs.filter((x) => x.actif).length}</b><small>${T("active players", "joueurs actifs")}</small></div>
+        <a class="co-card kpi" href="#/videos/tous"><span class="k">${T("Videos", "Vidéos")}</span><b>${M.length}</b><small>${T("sent to Ciprio", "envoyées à Ciprio")}</small><span class="go">→</span></a>
+        <a class="co-card kpi" href="#/videos/${aPointer.length ? "pour_vous" : "en_cours"}"><span class="k">${T("In progress", "En cours")}</span><b>${enCours.length + aPointer.length}</b><small>${aPointer.length ? T(`${aPointer.length} waiting for you`, `dont ${aPointer.length} pour vous`) : T("being analysed", "en analyse")}</small><span class="go">→</span></a>
+        <a class="co-card kpi" href="#/rapports"><span class="k">${T("Reports", "Rapports")}</span><b>${finis.length}</b><small>${T("analyses completed", "analyses terminées")}</small><span class="go">→</span></a>
+        <a class="co-card kpi" href="#/equipe"><span class="k">${T("Squad", "Effectif")}</span><b>${D.joueurs.filter((x) => x.actif).length}</b><small>${T("active players", "joueurs actifs")}</small><span class="go">→</span></a>
       </div>
       <div class="grid g-main">
         <div class="stack">
@@ -320,15 +340,8 @@
             <div class="toolbar" style="margin-bottom:12px"><h2>${T("Latest videos", "Dernières vidéos")}</h2><a class="linkbtn" href="#/videos">${T("See all", "Tout voir")}</a></div>
             ${M.length ? `<div class="mlist">${M.slice(0, 4).map(mrow).join("")}</div>` : `<div class="empty">${ICON.video}<p>${T("No video yet.", "Aucune vidéo pour l'instant.")}</p><a class="btn btn-ink btn-sm" href="#/nouveau">${T("Send a video", "Envoyer une vidéo")}</a></div>`}
           </div>
-          <div class="co-card">
-            <h2>${T("How it works", "Comment ça marche")}</h2>
-            <div class="how">
-              <div><b>${T("Film", "Filmez")}</b><p>${T("The whole match, camera fixed high up (Veo or similar).", "Le match entier, caméra fixe en hauteur (Veo ou équivalent).")}</p></div>
-              <div><b>${T("Send", "Envoyez")}</b><p>${T("The video and your game plan for the match.", "La vidéo et votre plan de jeu du match.")}</p></div>
-              <div><b>${T("Set up the pitch", "Réglez le terrain")}</b><p>${T("Point a few markings on images chosen by Ciprio.", "Pointez quelques repères sur des images choisies par Ciprio.")}</p></div>
-              <div><b>${T("Read the report", "Lisez le rapport")}</b><p>${T("Your instructions measured, team and players.", "Vos consignes mesurées, équipe et joueurs.")}</p></div>
-            </div>
-          </div>
+          <a class="co-card tuto-card" href="#/tuto"><div><span class="k">${T("New to Ciprio?", "Nouveau sur Ciprio ?")}</span><h2>${T("How it works, step by step", "Comment ça marche, étape par étape")}</h2>
+            <p>${T("From your squad to the report: what to do, what Ciprio does, how long it takes.", "De votre effectif au rapport : ce que vous faites, ce que fait Ciprio, combien de temps ça prend.")}</p></div><span class="btn">${T("Open the tutorial →", "Ouvrir le tutoriel →")}</span></a>
         </div>
         <div class="stack">
           <div class="co-card">
@@ -336,14 +349,6 @@
             <p class="sub">${faits} / ${etapes.length} ${T("done", "faites")}</p>
             <div class="meter"><i style="width:${Math.round((faits / etapes.length) * 100)}%"></i></div>
             <ul class="check">${etapes.map(([ok, t, h]) => `<li class="${ok ? "ok" : ""}"><a href="${h}"><i>${ok ? "✓" : ""}</i>${esc(t)}</a></li>`).join("")}</ul>
-          </div>
-          <div class="co-card">
-            <h2>${T("Useful reading", "À lire")}</h2>
-            <div class="links">
-              <a href="${L() === "fr" ? "/fr" : ""}/blog/how-to-film-a-football-match" target="_blank" rel="noopener">${T("How to film a match", "Bien filmer un match")}<span>→</span></a>
-              <a href="${L() === "fr" ? "/fr" : ""}/blog/measurable-individual-instructions-football" target="_blank" rel="noopener">${T("Instructions you can measure", "Des consignes mesurables")}<span>→</span></a>
-              <a href="${L() === "fr" ? "/fr" : ""}/blog/how-to-run-a-football-video-debrief" target="_blank" rel="noopener">${T("Running a video debrief", "Mener un débrief vidéo")}<span>→</span></a>
-            </div>
           </div>
         </div>
       </div>`;
@@ -409,7 +414,7 @@
       const rec = { coach_id: session.user.id, titre: (L() === "fr" ? "Contre " : "vs ") + adv, adversaire: adv, competition: $("comp").value.trim() || null,
         date_match: $("date").value || null, domicile: $("dom").value === "1", score_nous: n("sn"), score_eux: n("se"),
         couleur_nous: $("cn").value, couleur_eux: $("ce").value, equipe_id: ($("eq") && $("eq").value) || (D.equipe && D.equipe.id) || null,
-        plan: plan ? { plan_id: plan.id, nom: plan.nom, systeme: plan.systeme, consignes: plan.consignes, individuelles: plan.individuelles } : {}, video, etat: "cree" };
+        plan: plan ? { plan_id: plan.id, nom: plan.nom, systeme: plan.systeme, consignes: plan.consignes, individuelles: plan.individuelles, composition: plan.composition || [] } : {}, video, etat: "cree" };
       const { data, error } = await sb.from("matchs").insert(rec).select("id").single();
       if (error) return msg(m, error.message, "err");
       if (video.type === "fichier") {
@@ -423,7 +428,8 @@
 
   // ================================================================ VIDÉOS
   let filtre = "tous", recherche = "";
-  function videosView() {
+  function videosView(f) {
+    if (f) filtre = f;
     const F = { tous: () => true, pour_vous: (m) => m.etat === "a_pointer", en_cours: (m) => EN_COURS.includes(m.etat) && m.etat !== "a_pointer" || m.etat === "cree", termines: (m) => m.etat === "termine", erreur: (m) => m.etat === "erreur" };
     const noms = { tous: T("All", "Toutes"), pour_vous: T("Your turn", "À vous"), en_cours: T("In progress", "En cours"), termines: T("Done", "Terminées"), erreur: T("Problem", "Problème") };
     const draw = () => {
@@ -483,7 +489,7 @@
           <div class="field" style="margin-top:18px"><label for="plan">${T("Plan for this match", "Plan de ce match")}</label><select id="plan"><option value="">${T("No plan", "Aucun plan")}</option>${D.plans.map((x) => `<option value="${x.id}" ${p.plan_id === x.id ? "selected" : ""}>${esc(x.nom)}</option>`).join("")}</select></div>
           <div class="co-actions"><button class="btn btn-ink btn-sm" id="savePlan" type="button">${T("Use this plan", "Utiliser ce plan")}</button><a class="linkbtn" href="#/plan/nouveau">${T("Write a new plan", "Écrire un nouveau plan")}</a></div>
           <p class="form-msg" id="m"></p></div>
-        <div class="co-card"><h2>${T("System", "Système")}</h2><p class="sub">${esc(p.systeme || T("not set", "non précisé"))}</p>${pitchSVG(p.systeme || (D.equipe && D.equipe.systeme) || "4-3-3")}</div></div>`;
+        <div class="co-card"><h2>${T("Line-up", "Composition")}</h2><p class="sub">${esc(p.systeme || T("not set", "non précisé"))}</p>${pitchSVG(p.systeme || (D.equipe && D.equipe.systeme) || "4-3-3", p.composition || null)}</div></div>`;
     } else if (onglet === "rapport") {
       const pret = m.etat === "termine";
       corps = rapportApercu(pret);
@@ -504,7 +510,7 @@
       <nav class="tabs">${tabs.map(([k, t]) => `<a href="#/match/${m.id}/${k}"${k === onglet ? ' aria-current="page"' : ""}>${t}</a>`).join("")}</nav>${corps}`;
     if (onglet === "plan") $("savePlan").addEventListener("click", async () => {
       const p = D.plans.find((x) => x.id === $("plan").value);
-      const plan = p ? { plan_id: p.id, nom: p.nom, systeme: p.systeme, consignes: p.consignes, individuelles: p.individuelles } : {};
+      const plan = p ? { plan_id: p.id, nom: p.nom, systeme: p.systeme, consignes: p.consignes, individuelles: p.individuelles, composition: p.composition || [] } : {};
       const { error } = await sb.from("matchs").update({ plan }).eq("id", m.id);
       if (error) return msg($("m"), error.message, "err");
       await charger(); matchView(id, "plan");
@@ -534,6 +540,50 @@
         <p class="muted small">${T("Once the analysis is complete: how well each instruction of your game plan was followed, for the team and for each player, with the key video moments.", "Quand l'analyse sera terminée : le respect de chaque consigne de votre plan de jeu, pour l'équipe et pour chaque joueur, avec les moments clés en vidéo.")}</p></div></div></div>`;
   }
 
+  // ================================================================ COMMENT ÇA MARCHE (tutoriel)
+  function tutoView() {
+    try { localStorage.setItem("ciprio-tuto-vu", "1"); } catch {}
+    const E = [
+      { t: T("Create your team and register your players", "Créez votre équipe et inscrivez vos joueurs"), qui: T("You · 10 min, once", "Vous · 10 min, une seule fois"),
+        l: [T("Go to “Your team”, give it a name, its category and its shirt colours.", "Allez dans « Votre équipe », donnez-lui un nom, sa catégorie et ses couleurs de maillot."),
+          T("Register each player with his shirt number and his positions.", "Inscrivez chaque joueur avec son numéro de maillot et ses postes."),
+          T("The numbers let Ciprio recognise your players on the video.", "Les numéros permettent à Ciprio de reconnaître vos joueurs sur la vidéo.")], a: ["#/equipe", T("Your team", "Votre équipe")] },
+      { t: T("Write your game plan", "Écrivez votre plan de jeu"), qui: T("You · 5 min per match", "Vous · 5 min par match"),
+        l: [T("In “Game plans”, choose your system and place your registered players in the line-up.", "Dans « Plans de jeu », choisissez votre système et placez vos joueurs inscrits dans la composition."),
+          T("Write your team instructions: pressing, block, build-up… one action per line.", "Écrivez vos consignes collectives : pressing, bloc, relance… une action par ligne."),
+          T("Give each instruction a target Ciprio can measure (time, distance, zone).", "Donnez à chaque consigne un objectif que Ciprio peut mesurer (temps, distance, zone)."),
+          T("Add individual instructions for the players who need them.", "Ajoutez des consignes individuelles aux joueurs qui en ont besoin.")], a: ["#/plan/nouveau", T("Write a plan", "Écrire un plan")] },
+      { t: T("Film the whole match", "Filmez le match entier"), qui: T("You · on match day", "Vous · le jour du match"),
+        l: [T("A fixed camera, high up, at the halfway line, seeing both goals (Veo or similar).", "Une caméra fixe, en hauteur, au niveau de la médiane, qui voit les deux buts (Veo ou équivalent)."),
+          T("From the kick-off to the final whistle, without moving the camera.", "Du coup d'envoi au coup de sifflet final, sans déplacer la caméra.")], a: ["#/aide", T("Filming tips", "Conseils de tournage")] },
+      { t: T("Send the video", "Envoyez la vidéo"), qui: T("You · 2 min", "Vous · 2 min"),
+        l: [T("Click “New video”: opponent, date, shirt colours, game plan of the match.", "Cliquez sur « Nouvelle vidéo » : adversaire, date, couleurs des maillots, plan de jeu du match."),
+          T("Paste the Veo share link (file upload is coming).", "Collez le lien de partage Veo (l'envoi du fichier arrive bientôt)."),
+          T("The match appears in “Videos” with its progress bar.", "Le match apparaît dans « Vidéos » avec sa barre d'avancement.")], a: ["#/nouveau", T("New video", "Nouvelle vidéo")] },
+      { t: T("Ciprio prepares the match", "Ciprio prépare le match"), qui: T("Ciprio · automatic", "Ciprio · automatique"),
+        l: [T("Ciprio watches the video and chooses a few images where the pitch markings are clear.", "Ciprio regarde la vidéo et choisit quelques images où les marquages du terrain sont nets."),
+          T("The bar at the top of the screen shows where it stands. Nothing to do.", "La barre en haut de l'écran montre où il en est. Rien à faire.")] },
+      { t: T("Set up the pitch", "Réglez le terrain"), qui: T("You · about 5 min", "Vous · environ 5 min"),
+        l: [T("When it's your turn, a green banner appears: click “Set up the pitch”.", "Quand c'est votre tour, un bandeau vert apparaît : cliquez sur « Régler le terrain »."),
+          T("On each image, click exactly on the markings asked (corners, boxes, centre circle…).", "Sur chaque image, cliquez exactement sur les repères demandés (coins, surfaces, rond central…)."),
+          T("Can't see a marking? Say so: Ciprio calculates it and shows it in orange. Drag it if it's off.", "Vous ne voyez pas un repère ? Dites-le : Ciprio le calcule et le montre en orange. Faites-le glisser s'il est à côté."),
+          T("Your clicks are the reference of the whole analysis: Ciprio never moves them.", "Vos clics sont la référence de toute l'analyse : Ciprio ne les déplace jamais.")] },
+      { t: T("Ciprio follows the whole match", "Ciprio suit tout le match"), qui: T("Ciprio · automatic", "Ciprio · automatique"),
+        l: [T("The pitch is followed image by image, then players, ball and team shape.", "Le terrain est suivi image par image, puis les joueurs, le ballon et le bloc."),
+          T("A quality check is run before anything reaches you.", "Un contrôle qualité est fait avant que quoi que ce soit vous parvienne.")] },
+      { t: T("Read the report", "Lisez le rapport"), qui: T("You", "Vous"),
+        l: [T("Each instruction of your game plan, measured over the whole match.", "Chaque consigne de votre plan de jeu, mesurée sur tout le match."),
+          T("Team and player by player, with the key video moments to show in the debrief.", "Pour l'équipe et joueur par joueur, avec les moments vidéo clés à montrer au débrief.")], a: ["#/rapports", T("Reports", "Rapports")] },
+    ];
+    view.innerHTML = `<div class="tuto-hero"><span class="k">${T("Tutorial", "Tutoriel")}</span><h1>${T("How Ciprio works", "Comment fonctionne Ciprio")}</h1>
+        <p>${T("Eight steps, from your squad to the report. You do four of them; Ciprio does the rest.", "Huit étapes, de votre effectif au rapport. Vous en faites quatre ; Ciprio fait le reste.")}</p></div>
+      <ol class="tl">${E.map((e, k) => `<li class="${/Ciprio ·/.test(e.qui) ? "auto" : ""}"><span class="n">${k + 1}</span><div class="co-card"><div class="tl-h"><h2>${e.t}</h2><span class="who">${e.qui}</span></div>
+        <ul>${e.l.map((x) => `<li>${x}</li>`).join("")}</ul>${e.a ? `<a class="btn btn-line btn-sm" href="${e.a[0]}">${e.a[1]} →</a>` : ""}</div></li>`).join("")}</ol>
+      <div class="co-card" style="margin-top:22px"><h2>${T("The stages of an analysis", "Les étapes d'une analyse")}</h2><p class="sub">${T("What you see on each match, in the top bar and in “Videos”.", "Ce que vous voyez sur chaque match, dans la barre du haut et dans « Vidéos ».")}</p>
+        <div class="legend">${ETATS.map((e) => `<span class="pill ${pillClass(e.k)}">${esc(T(e.en, e.fr))}</span>`).join("")}</div></div>
+      <div class="callout tuto-end" style="margin-top:18px"><p><b>${T("Ready?", "Prêt ?")}</b> ${T("Start with your team: it takes ten minutes, once.", "Commencez par votre équipe : dix minutes, une seule fois.")}</p><a class="btn btn-ink btn-sm" href="${D.equipe ? "#/nouveau" : "#/equipe"}">${D.equipe ? T("Send a video →", "Envoyer une vidéo →") : T("Create my team →", "Créer mon équipe →")}</a></div>`;
+  }
+
   // ================================================================ RAPPORTS
   function rapportsView() {
     const finis = D.matchs.filter((m) => m.etat === "termine");
@@ -553,9 +603,11 @@
   }
 
   function planView(id) {
-    const p = id === "nouveau" ? { nom: "", systeme: (D.equipe && D.equipe.systeme) || "4-3-3", consignes: [{ theme: "pressing", texte: "", mesure: "" }], individuelles: [], notes: "" } : D.plans.find((x) => x.id === id);
+    const p0 = id === "nouveau" ? { nom: "", systeme: (D.equipe && D.equipe.systeme) || "4-3-3", consignes: [{ theme: "pressing", texte: "", mesure: "" }], individuelles: [], composition: [], notes: "" } : D.plans.find((x) => x.id === id);
+    const p = planView.brouillon && planView.brouillon.id === id ? planView.brouillon.p : p0;
+    planView.brouillon = null;
     if (!p) { view.innerHTML = `<a class="back" href="#/plans">← ${T("Game plans", "Plans de jeu")}</a>${vide("", T("Plan not found", "Plan introuvable"), "")}`; return; }
-    let C = JSON.parse(JSON.stringify(p.consignes || [])), IND = JSON.parse(JSON.stringify(p.individuelles || []));
+    let C = JSON.parse(JSON.stringify(p.consignes || [])), IND = JSON.parse(JSON.stringify(p.individuelles || [])), COMPO = JSON.parse(JSON.stringify(p.composition || []));
     const joueursOpts = (sel) => `<option value="">${T("Choose a player", "Choisir un joueur")}</option>${D.joueurs.filter((j) => j.actif).map((j) => `<option value="${j.id}" ${sel === j.id ? "selected" : ""}>${j.numero != null ? "#" + j.numero + " " : ""}${esc([j.prenom, j.nom].filter(Boolean).join(" "))}</option>`).join("")}`;
     view.innerHTML = `<a class="back" href="#/plans">← ${T("Game plans", "Plans de jeu")}</a>
       <div class="co-head"><div><h1>${id === "nouveau" ? T("New game plan", "Nouveau plan de jeu") : esc(p.nom)}</h1><p>${T("Write instructions Ciprio can measure: who, where, when, how much.", "Écrivez des consignes que Ciprio peut mesurer : qui, où, quand, combien.")}</p></div></div>
@@ -570,7 +622,8 @@
             <div class="rowlist" id="li"></div></div>
           <div class="co-card"><div class="field" style="margin:0"><label for="notes">${T("Notes", "Notes")}</label><textarea id="notes" placeholder="${T("Context, opponent's strengths…", "Contexte, points forts de l'adversaire…")}">${esc(p.notes || "")}</textarea></div></div>
         </div>
-        <div class="stack"><div class="co-card"><h2>${T("Shape", "Organisation")}</h2><p class="sub" id="sysLabel">${esc(p.systeme)}</p><div id="pitch">${pitchSVG(p.systeme)}</div></div>
+        <div class="stack"><div class="co-card"><div class="toolbar" style="margin-bottom:4px"><h2>${T("Line-up", "Composition")}</h2><button class="btn btn-line btn-sm" type="button" id="newJ">${T("+ Register a player", "+ Inscrire un joueur")}</button></div>
+            <p class="sub" id="sysLabel">${esc(p.systeme)}</p><div id="pitch"></div><div id="compo" class="compo"></div></div>
           <div class="co-card"><h2>${T("Good instructions", "De bonnes consignes")}</h2><ul class="tips">
             <li><b>1</b><span>${T("One action per line: “Press the centre back within 3 s after losing the ball”.", "Une action par ligne : « Presser le défenseur central dans les 3 s après la perte ».")}</span></li>
             <li><b>2</b><span>${T("A measurable target: distance, time, zone, number.", "Un objectif mesurable : distance, temps, zone, nombre.")}</span></li>
@@ -591,10 +644,24 @@
       $("li").querySelectorAll("[data-f]").forEach((el) => el.addEventListener("input", () => { IND[el.closest(".crow").dataset.k][el.dataset.f] = el.value; }));
       $("li").querySelectorAll("[data-del]").forEach((b) => b.addEventListener("click", () => { IND.splice(Number(b.dataset.del), 1); drawI(); }));
     };
-    drawC(); drawI();
+    const drawCompo = () => {
+      const sys = $("sys").value, P = places(sys);
+      COMPO = P.map((_, k) => COMPO[k] || null);
+      $("pitch").innerHTML = pitchSVG(sys, COMPO);
+      const opts = (k) => `<option value="">–</option>${D.joueurs.filter((j) => j.actif).map((j) => `<option value="${j.id}" ${COMPO[k] === j.id ? "selected" : ""} ${COMPO.includes(j.id) && COMPO[k] !== j.id ? "disabled" : ""}>${esc(nomJoueur(j))}${j.poste ? " · " + esc(poste(j.poste)) : ""}</option>`).join("")}`;
+      $("compo").innerHTML = D.joueurs.length ? P.map((n, k) => `<label><span>${esc(n)}</span><select data-k="${k}">${opts(k)}</select></label>`).join("")
+        : `<p class="muted small">${T("Register your players to build the line-up.", "Inscrivez vos joueurs pour faire la composition.")}</p>`;
+      $("compo").querySelectorAll("select").forEach((el) => el.addEventListener("change", () => { COMPO[Number(el.dataset.k)] = el.value || null; drawCompo(); }));
+    };
+    drawC(); drawI(); drawCompo();
+    // inscrire un joueur sans quitter le plan : le brouillon est gardé, puis la page revient avec le joueur dans les listes
+    $("newJ").addEventListener("click", () => joueurDlg(null, () => {
+      planView.brouillon = { id, p: { ...p, nom: $("nom").value, systeme: $("sys").value, consignes: C, individuelles: IND, composition: COMPO, notes: $("notes").value } };
+      planView(id);
+    }));
     $("addC").addEventListener("click", () => { C.push({ theme: "pressing", texte: "", mesure: "" }); drawC(); });
     $("addI").addEventListener("click", () => { IND.push({ joueur_id: "", texte: "" }); drawI(); });
-    $("sys").addEventListener("change", () => { $("pitch").innerHTML = pitchSVG($("sys").value); $("sysLabel").textContent = $("sys").value; });
+    $("sys").addEventListener("change", () => { $("sysLabel").textContent = $("sys").value; drawCompo(); });
     if ($("del")) $("del").addEventListener("click", async () => {
       if (!confirm(T("Delete this plan? Matches keep their own copy.", "Supprimer ce plan ? Les matchs gardent leur copie."))) return;
       const { error } = await sb.from("plans_de_jeu").delete().eq("id", p.id);
@@ -605,7 +672,7 @@
       ev.preventDefault();
       const nom = $("nom").value.trim();
       if (!nom) return msg($("m"), T("Give the plan a name.", "Donnez un nom au plan."), "err");
-      const rec = { nom, systeme: $("sys").value, consignes: C.filter((c) => c.texte.trim()), individuelles: IND.filter((c) => c.texte.trim() && c.joueur_id), notes: $("notes").value.trim() || null, equipe_id: (D.equipe && D.equipe.id) || null };
+      const rec = { nom, systeme: $("sys").value, consignes: C.filter((c) => c.texte.trim()), individuelles: IND.filter((c) => c.texte.trim() && c.joueur_id), composition: COMPO, notes: $("notes").value.trim() || null, equipe_id: (D.equipe && D.equipe.id) || null };
       const r = id === "nouveau" ? await sb.from("plans_de_jeu").insert({ ...rec, coach_id: session.user.id }).select("id").single() : await sb.from("plans_de_jeu").update(rec).eq("id", p.id).select("id").single();
       if (r.error) return msg($("m"), r.error.message, "err");
       await charger();
@@ -621,14 +688,16 @@
     const par = (l) => J.filter((j) => j.actif && ligne(j.poste) === l).length;
     view.innerHTML = `<div class="co-head"><div class="team-head"><span class="crest" style="background:${esc(e.couleur_domicile || "#12a150")}">${esc((e.club || e.nom).slice(0, 2).toUpperCase())}</span>
           <div><h1>${esc(e.nom)}</h1><p style="margin-top:2px">${esc([e.club, e.categorie, e.niveau].filter(Boolean).join(" · "))}</p></div></div>
-        <div class="actions"><button class="btn btn-line" id="edit" type="button">${T("Edit the team", "Modifier l'équipe")}</button><button class="btn btn-ink" id="add" type="button">${T("+ Add a player", "+ Ajouter un joueur")}</button></div></div>
+        <div class="actions"><button class="btn btn-line" id="edit" type="button">${T("Edit the team", "Modifier l'équipe")}</button><button class="btn btn-ink" id="add" type="button">${T("+ Register a player", "+ Inscrire un joueur")}</button></div></div>
       <div class="grid g-main">
         <div class="co-card" style="padding:8px 8px 4px">
           <div class="toolbar" style="padding:14px 14px 0;margin-bottom:8px"><h2>${T("Squad", "Effectif")} <span class="muted" style="font-weight:400">· ${J.filter((j) => j.actif).length}</span></h2></div>
-          ${J.length ? `<div style="overflow-x:auto"><table class="table"><thead><tr><th>${T("No.", "N°")}</th><th>${T("Player", "Joueur")}</th><th>${T("Position", "Poste")}</th><th>${T("Foot", "Pied")}</th><th></th></tr></thead><tbody>
-            ${J.map((j) => `<tr data-id="${j.id}" style="${j.actif ? "" : "opacity:.5"}"><td><span class="num">${j.numero ?? "–"}</span></td><td><b>${esc([j.prenom, j.nom].filter(Boolean).join(" "))}</b></td>
-              <td>${j.poste ? `<span class="tag" title="${esc(posteNom(j.poste))}">${esc(poste(j.poste))}</span>` : ""}</td><td class="muted">${esc(({ droit: T("Right", "Droit"), gauche: T("Left", "Gauche"), deux: T("Both", "Les deux") })[j.pied] || "")}</td>
-              <td class="muted small">${j.actif ? "" : T("inactive", "inactif")}</td></tr>`).join("")}</tbody></table></div>`
+          ${J.length ? `<div style="overflow-x:auto"><table class="table"><thead><tr><th>${T("No.", "N°")}</th><th>${T("Player", "Joueur")}</th><th>${T("Positions", "Postes")}</th><th>${T("Foot", "Pied")}</th><th>${T("Age", "Âge")}</th><th>${T("Status", "Statut")}</th></tr></thead><tbody>
+            ${J.map((j) => `<tr data-id="${j.id}" style="${j.actif ? "" : "opacity:.5"}"><td><span class="num">${j.numero ?? "–"}</span></td><td><b>${esc([j.prenom, j.nom].filter(Boolean).join(" "))}</b>${j.capitaine ? ' <span class="tag cap">C</span>' : ""}${j.club_precedent ? `<br><span class="muted small">${T("from ", "vient de ")}${esc(j.club_precedent)}</span>` : ""}</td>
+              <td>${j.poste ? `<span class="tag strong" title="${esc(posteNom(j.poste))}">${esc(poste(j.poste))}</span>` : ""} ${(j.postes_secondaires || []).map((x) => `<span class="tag" title="${esc(posteNom(x))}">${esc(poste(x))}</span>`).join(" ")}</td>
+              <td class="muted">${esc(({ droit: T("Right", "Droit"), gauche: T("Left", "Gauche"), deux: T("Both", "Les deux") })[j.pied] || "")}</td>
+              <td class="muted">${age(j.date_naissance) ?? ""}</td>
+              <td>${!j.actif ? `<span class="muted small">${T("left the squad", "hors effectif")}</span>` : j.statut && j.statut !== "disponible" ? `<span class="tag st-${j.statut}">${esc(statut(j.statut))}</span>` : `<span class="muted small">${esc(statut("disponible"))}</span>`}</td></tr>`).join("")}</tbody></table></div>`
             : `<div class="empty">${ICON.team}<p>${T("No player yet.", "Aucun joueur pour l'instant.")}</p><p class="small">${T("Numbers help Ciprio recognise your players on video.", "Les numéros aident Ciprio à reconnaître vos joueurs sur la vidéo.")}</p></div>`}
         </div>
         <div class="stack">
@@ -672,37 +741,62 @@
     });
   }
 
-  function joueurDlg(j) {
+  function joueurDlg(j, apres) {
     const dlg = $("dlg");
-    const v = j || { prenom: "", nom: "", numero: null, poste: "", pied: "", actif: true };
-    dlg.innerHTML = `<form id="fj" novalidate><h2>${j ? T("Edit player", "Modifier le joueur") : T("New player", "Nouveau joueur")}</h2>
+    if (!D.equipe) { location.hash = "#/equipe"; return; }
+    const v = j || { prenom: "", nom: "", numero: null, poste: "", postes_secondaires: [], pied: "", actif: true, statut: "disponible", capitaine: false };
+    const sec = new Set(v.postes_secondaires || []);
+    dlg.classList.add("wide");
+    dlg.innerHTML = `<form id="fj" novalidate><h2>${j ? T("Player profile", "Fiche du joueur") : T("Register a player", "Inscrire un joueur")}</h2>
+      <h3 class="dsec">${T("Identity", "Identité")}</h3>
       <div class="frow"><div class="field"><label for="jp">${T("First name", "Prénom")}</label><input id="jp" value="${esc(v.prenom || "")}"></div>
         <div class="field"><label for="jn">${T("Last name", "Nom")}</label><input id="jn" value="${esc(v.nom || "")}"></div></div>
-      <div class="frow3"><div class="field"><label for="jnum">${T("Number", "Numéro")}</label><input id="jnum" type="number" min="0" max="99" value="${v.numero ?? ""}"></div>
-        <div class="field"><label for="jpo">${T("Position", "Poste")}</label><select id="jpo"><option value="">–</option>${POSTES.map((p) => `<option value="${p[0]}" ${v.poste === p[0] ? "selected" : ""}>${L() === "fr" ? p[2] : p[3]}</option>`).join("")}</select></div>
-        <div class="field"><label for="jpi">${T("Foot", "Pied")}</label><select id="jpi"><option value="">–</option>${[["droit", T("Right", "Droit")], ["gauche", T("Left", "Gauche")], ["deux", T("Both", "Les deux")]].map(([k, t]) => `<option value="${k}" ${v.pied === k ? "selected" : ""}>${t}</option>`).join("")}</select></div></div>
-      <label class="switch" style="border:0"><span>${T("Active in the squad", "Actif dans l'effectif")}</span><input id="ja" type="checkbox" ${v.actif ? "checked" : ""}></label>
+      <div class="frow"><div class="field"><label for="jdn">${T("Date of birth", "Date de naissance")}</label><input id="jdn" type="date" value="${esc(v.date_naissance || "")}"></div>
+        <div class="field"><label for="jnat">${T("Nationality", "Nationalité")}</label><input id="jnat" value="${esc(v.nationalite || "")}"></div></div>
+      <h3 class="dsec">${T("On the pitch", "Sur le terrain")}</h3>
+      <div class="frow3"><div class="field"><label for="jnum">${T("Shirt number", "Numéro")}</label><input id="jnum" type="number" min="0" max="99" value="${v.numero ?? ""}"></div>
+        <div class="field"><label for="jpo">${T("Main position", "Poste principal")}</label><select id="jpo"><option value="">–</option>${POSTES.map((p) => `<option value="${p[0]}" ${v.poste === p[0] ? "selected" : ""}>${L() === "fr" ? p[2] : p[3]}</option>`).join("")}</select></div>
+        <div class="field"><label for="jpi">${T("Strong foot", "Bon pied")}</label><select id="jpi"><option value="">–</option>${[["droit", T("Right", "Droit")], ["gauche", T("Left", "Gauche")], ["deux", T("Both", "Les deux")]].map(([k, t]) => `<option value="${k}" ${v.pied === k ? "selected" : ""}>${t}</option>`).join("")}</select></div></div>
+      <div class="field"><span class="flabel">${T("Other positions", "Autres postes")}</span><div class="chips" id="jsec">${POSTES.map((p) => `<button type="button" data-p="${p[0]}" aria-pressed="${sec.has(p[0])}" title="${esc(L() === "fr" ? p[2] : p[3])}">${esc(L() === "fr" ? p[0] : p[1])}</button>`).join("")}</div></div>
+      <div class="frow"><div class="field"><label for="jst">${T("Status", "Statut")}</label><select id="jst">${STATUTS.map((x) => `<option value="${x[0]}" ${v.statut === x[0] ? "selected" : ""}>${L() === "fr" ? x[1] : x[2]}</option>`).join("")}</select></div>
+        <div class="field"><span class="flabel">&nbsp;</span><label class="check-inline"><input id="jcap" type="checkbox" ${v.capitaine ? "checked" : ""}>${T("Captain", "Capitaine")}</label></div></div>
+      <h3 class="dsec">${T("Physical", "Physique")}</h3>
+      <div class="frow"><div class="field"><label for="jt">${T("Height (cm)", "Taille (cm)")}</label><input id="jt" type="number" min="100" max="230" value="${v.taille_cm ?? ""}"></div>
+        <div class="field"><label for="jw">${T("Weight (kg)", "Poids (kg)")}</label><input id="jw" type="number" min="30" max="150" value="${v.poids_kg ?? ""}"></div></div>
+      <h3 class="dsec">${T("Career", "Parcours")}</h3>
+      <div class="frow3"><div class="field"><label for="jcp">${T("Previous club", "Club précédent")}</label><input id="jcp" value="${esc(v.club_precedent || "")}"></div>
+        <div class="field"><label for="jar">${T("Joined on", "Arrivé le")}</label><input id="jar" type="date" value="${esc(v.arrive_le || "")}"></div>
+        <div class="field"><label for="jli">${T("Licence no.", "N° de licence")}</label><input id="jli" value="${esc(v.licence || "")}"></div></div>
+      <div class="field"><label for="jno">${T("Notes", "Notes")} <small>${T("(strengths, areas to work on…)", "(points forts, axes de travail…)")}</small></label><textarea id="jno">${esc(v.notes || "")}</textarea></div>
+      <label class="switch" style="border:0;padding-top:0"><span>${T("In the current squad", "Dans l'effectif actuel")}</span><input id="ja" type="checkbox" ${v.actif ? "checked" : ""}></label>
       <p class="form-msg" id="jm"></p>
       <div class="co-actions"><span>${j ? `<button class="btn btn-danger btn-sm" type="button" id="jdel">${T("Delete", "Supprimer")}</button>` : ""}</span>
-        <span style="display:flex;gap:10px"><button class="btn btn-line btn-sm" type="button" id="jx">${T("Cancel", "Annuler")}</button><button class="btn btn-ink btn-sm" type="submit">${T("Save", "Enregistrer")}</button></span></div></form>`;
+        <span style="display:flex;gap:10px"><button class="btn btn-line btn-sm" type="button" id="jx">${T("Cancel", "Annuler")}</button><button class="btn btn-ink btn-sm" type="submit">${j ? T("Save", "Enregistrer") : T("Register", "Inscrire")}</button></span></div></form>`;
     dlg.showModal();
+    const fini = async () => { dlg.close(); await charger(); if (apres) apres(); else equipeView(); };
+    $("jsec").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"))));
     $("jx").addEventListener("click", () => dlg.close());
     if ($("jdel")) $("jdel").addEventListener("click", async () => {
       if (!confirm(T("Delete this player?", "Supprimer ce joueur ?"))) return;
       const { error } = await sb.from("joueurs").delete().eq("id", j.id);
       if (error) return msg($("jm"), error.message, "err");
-      dlg.close(); await charger(); equipeView();
+      fini();
     });
     $("fj").addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const nom = $("jn").value.trim();
       if (!nom) return msg($("jm"), T("Fill in the last name.", "Indiquez le nom."), "err");
-      const num = $("jnum").value === "" ? null : Number($("jnum").value);
+      const n = (x) => ($(x).value === "" ? null : Number($(x).value));
+      const num = n("jnum");
       if (num != null && D.joueurs.some((x) => x.actif && x.numero === num && (!j || x.id !== j.id))) return msg($("jm"), T("This number is already taken.", "Ce numéro est déjà pris."), "err");
-      const rec = { prenom: $("jp").value.trim() || null, nom, numero: num, poste: $("jpo").value || null, pied: $("jpi").value || null, actif: $("ja").checked };
+      const princ = $("jpo").value || null;
+      const rec = { prenom: $("jp").value.trim() || null, nom, numero: num, poste: princ, pied: $("jpi").value || null, actif: $("ja").checked,
+        postes_secondaires: [...$("jsec").querySelectorAll('button[aria-pressed="true"]')].map((b) => b.dataset.p).filter((x) => x !== princ),
+        date_naissance: $("jdn").value || null, nationalite: $("jnat").value.trim() || null, statut: $("jst").value, capitaine: $("jcap").checked,
+        taille_cm: n("jt"), poids_kg: n("jw"), club_precedent: $("jcp").value.trim() || null, arrive_le: $("jar").value || null, licence: $("jli").value.trim() || null, notes: $("jno").value.trim() || null };
       const r = j ? await sb.from("joueurs").update(rec).eq("id", j.id) : await sb.from("joueurs").insert({ ...rec, coach_id: session.user.id, equipe_id: D.equipe.id });
       if (r.error) return msg($("jm"), r.error.message, "err");
-      dlg.close(); await charger(); equipeView();
+      fini();
     });
   }
 
@@ -733,46 +827,97 @@
       </div></div>`;
   }
 
-  // ================================================================ PARAMÈTRES
-  function parametresView() {
-    const p = D.profil;
-    view.innerHTML = `<div class="co-head"><div><h1>${T("Settings", "Paramètres")}</h1><p>${T("Your profile, your preferences and your account.", "Votre profil, vos préférences et votre compte.")}</p></div></div>
-      <div class="grid g2" style="align-items:start">
-        <form id="fp" class="co-card" novalidate><h2 style="margin-bottom:16px">${T("Profile", "Profil")}</h2>
-          <div class="field"><label for="nom">${T("Your name", "Votre nom")}</label><input id="nom" autocomplete="name" value="${esc(p.nom || "")}"></div>
-          <div class="frow"><div class="field"><label for="fct">${T("Role", "Fonction")}</label><select id="fct"><option value="">–</option>${FONCTIONS.map((f) => `<option value="${f[0]}" ${p.fonction === f[0] ? "selected" : ""}>${L() === "fr" ? f[1] : f[2]}</option>`).join("")}</select></div>
-            <div class="field"><label for="club">${T("Club", "Club")}</label><input id="club" autocomplete="organization" value="${esc(p.club || "")}"></div></div>
-          <div class="field"><label for="tel">${T("Phone", "Téléphone")} <small>${T("(optional)", "(facultatif)")}</small></label><input id="tel" type="tel" autocomplete="tel" value="${esc(p.telephone || "")}"></div>
-          <div class="field"><label>${T("E-mail", "E-mail")}</label><input value="${esc(session.user.email)}" disabled></div>
-          <div class="co-actions"><button class="btn btn-ink btn-sm" type="submit">${T("Save", "Enregistrer")}</button></div><p class="form-msg" id="mp"></p></form>
-        <div class="stack">
-          <div class="co-card"><h2 style="margin-bottom:6px">${T("Preferences", "Préférences")}</h2>
-            <label class="switch"><span>${T("E-mail me when an analysis is ready", "M'écrire quand une analyse est prête")}</span><input id="notif" type="checkbox" ${p.notif_email !== false ? "checked" : ""}></label>
-            <div class="switch"><span>${T("Language", "Langue")}</span><span class="chips"><button type="button" data-l="fr" aria-pressed="${L() === "fr"}">Français</button><button type="button" data-l="en" aria-pressed="${L() === "en"}">English</button></span></div></div>
-          <form id="fs" class="co-card" novalidate><h2 style="margin-bottom:16px">${T("Security", "Sécurité")}</h2>
-            <div class="field"><label for="mdp">${T("New password", "Nouveau mot de passe")} <small>${T("(8 characters min.)", "(8 caractères min.)")}</small></label><input id="mdp" type="password" autocomplete="new-password" minlength="8"></div>
-            <div class="co-actions"><button class="btn btn-line btn-sm" type="submit">${T("Change my password", "Changer mon mot de passe")}</button></div><p class="form-msg" id="ms"></p></form>
-          <div class="co-card"><h2 style="margin-bottom:8px">${T("Account", "Compte")}</h2><p class="sub">${T("To delete your account and your data, write to us: it's done within 7 days.", "Pour supprimer votre compte et vos données, écrivez-nous : c'est fait sous 7 jours.")}</p>
-            <div class="co-actions" style="margin-top:14px"><button class="btn btn-ink btn-sm" id="logout" type="button">${T("Log out", "Se déconnecter")}</button><a class="btn btn-danger btn-sm" href="mailto:contact@ciprio.ai?subject=${encodeURIComponent(T("Delete my Ciprio account", "Supprimer mon compte Ciprio"))}">${T("Delete my account", "Supprimer mon compte")}</a></div></div>
-        </div></div>`;
+  // ================================================================ PARAMÈTRES (à onglets)
+  function parametresView(onglet = "profil") {
+    const p = D.profil, pref = p.preferences || {};
+    const O = [["profil", T("Profile", "Profil")], ["compte", T("Account & security", "Compte et sécurité")], ["club", T("Club & team", "Club et équipe")],
+      ["notifications", T("Notifications", "Notifications")], ["preferences", T("Preferences", "Préférences")], ["abonnement", T("Plan", "Abonnement")], ["donnees", T("Privacy & data", "Confidentialité et données")]];
+    if (!O.some((o) => o[0] === onglet)) onglet = "profil";
+    const savePref = async (k, val) => { const np = { ...(D.profil.preferences || {}), [k]: val }; const { error } = await sb.from("profils").update({ preferences: np }).eq("id", session.user.id); if (!error) D.profil.preferences = np; return error; };
+    let corps = "";
+    if (onglet === "profil") corps = `<form id="f" class="co-card" novalidate><h2>${T("Profile", "Profil")}</h2><p class="sub">${T("How you appear in Ciprio.", "Comment vous apparaissez dans Ciprio.")}</p>
+        <div class="team-head" style="margin:18px 0"><span class="avatar xl">${esc(initiales())}</span><div><b>${esc(p.nom || session.user.email)}</b><p class="muted small">${esc(session.user.email)}</p></div></div>
+        <div class="frow"><div class="field"><label for="nom">${T("Full name", "Nom complet")}</label><input id="nom" autocomplete="name" value="${esc(p.nom || "")}"></div>
+          <div class="field"><label for="fct">${T("Role", "Fonction")}</label><select id="fct"><option value="">–</option>${FONCTIONS.map((f) => `<option value="${f[0]}" ${p.fonction === f[0] ? "selected" : ""}>${L() === "fr" ? f[1] : f[2]}</option>`).join("")}</select></div></div>
+        <div class="frow"><div class="field"><label for="dip">${T("Coaching licence", "Diplôme d'entraîneur")}</label><input id="dip" value="${esc(p.diplome || "")}" placeholder="${T("e.g. UEFA B", "ex. BEF, DES, UEFA B")}"></div>
+          <div class="field"><label for="tel">${T("Phone", "Téléphone")}</label><input id="tel" type="tel" autocomplete="tel" value="${esc(p.telephone || "")}"></div></div>
+        <div class="field"><label for="bio">${T("About you", "À propos")} <small>${T("(optional)", "(facultatif)")}</small></label><textarea id="bio" placeholder="${T("Your career, your philosophy of play…", "Votre parcours, votre philosophie de jeu…")}">${esc(p.bio || "")}</textarea></div>
+        <div class="co-actions"><button class="btn btn-ink btn-sm" type="submit">${T("Save", "Enregistrer")}</button></div><p class="form-msg" id="m"></p></form>`;
+    else if (onglet === "compte") corps = `<div class="stack">
+        <div class="co-card"><h2>${T("E-mail address", "Adresse e-mail")}</h2><p class="sub">${T("Used to log in and to receive your codes.", "Sert à vous connecter et à recevoir vos codes.")}</p>
+          <div class="field" style="margin-top:14px"><input value="${esc(session.user.email)}" disabled></div>
+          <p class="muted small">${T("To change it, write to contact@ciprio.ai.", "Pour la changer, écrivez à contact@ciprio.ai.")}</p></div>
+        <form id="fs" class="co-card" novalidate><h2>${T("Password", "Mot de passe")}</h2><p class="sub">${T("At least 8 characters.", "Au moins 8 caractères.")}</p>
+          <div class="frow" style="margin-top:14px"><div class="field"><label for="mdp">${T("New password", "Nouveau mot de passe")}</label><input id="mdp" type="password" autocomplete="new-password" minlength="8"></div>
+            <div class="field"><label for="mdp2">${T("Confirm", "Confirmer")}</label><input id="mdp2" type="password" autocomplete="new-password" minlength="8"></div></div>
+          <div class="co-actions"><button class="btn btn-ink btn-sm" type="submit">${T("Change my password", "Changer mon mot de passe")}</button></div><p class="form-msg" id="ms"></p></form>
+        <div class="co-card"><h2>${T("Sessions", "Sessions")}</h2><p class="sub">${T("Log out here, or from every device where you are logged in.", "Déconnectez-vous ici, ou de tous les appareils où vous êtes connecté.")}</p>
+          <dl class="dl" style="margin-top:14px"><dt>${T("Account created", "Compte créé le")}</dt><dd>${esc(fmtDate(session.user.created_at) || "–")}</dd><dt>${T("Last login", "Dernière connexion")}</dt><dd>${esc(fmtDate(session.user.last_sign_in_at, { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }) || "–")}</dd></dl>
+          <div class="co-actions" style="margin-top:16px"><button class="btn btn-ink btn-sm" id="logout" type="button">${T("Log out", "Se déconnecter")}</button><button class="btn btn-line btn-sm" id="logoutAll" type="button">${T("Log out everywhere", "Se déconnecter partout")}</button></div></div></div>`;
+    else if (onglet === "club") { const e = D.equipe; corps = `<div class="co-card"><h2>${T("Club & team", "Club et équipe")}</h2><p class="sub">${T("Your club and the team you analyse.", "Votre club et l'équipe que vous analysez.")}</p>
+        ${e ? `<div class="team-head" style="margin:18px 0"><span class="crest" style="background:${esc(e.couleur_domicile || "#12a150")}">${esc((e.club || e.nom).slice(0, 2).toUpperCase())}</span><div><b>${esc(e.nom)}</b><p class="muted small">${esc([e.club, e.categorie, e.niveau].filter(Boolean).join(" · "))}</p></div></div>
+          <dl class="dl"><dt>${T("Usual system", "Système habituel")}</dt><dd>${esc(e.systeme || "–")}</dd><dt>${T("Players", "Joueurs")}</dt><dd>${D.joueurs.filter((x) => x.actif).length}</dd><dt>${T("Ground", "Stade")}</dt><dd>${esc(e.stade || "–")}</dd></dl>
+          <div class="co-actions" style="margin-top:16px"><a class="btn btn-ink btn-sm" href="#/equipe">${T("Manage the team", "Gérer l'équipe")}</a></div>`
+          : `<div class="callout info" style="margin-top:16px"><p>${T("No team yet.", "Pas encore d'équipe.")}</p><a class="btn btn-ink btn-sm" href="#/equipe">${T("Create my team", "Créer mon équipe")}</a></div>`}</div>`; }
+    else if (onglet === "notifications") {
+      const N = [["analyse", T("An analysis is ready", "Une analyse est prête"), T("The report of a match is available.", "Le rapport d'un match est disponible.")],
+        ["pointage", T("It's your turn to set up the pitch", "C'est à vous de régler le terrain"), T("A match is waiting for your 5 minutes of pointing.", "Un match attend vos 5 minutes de pointage.")],
+        ["probleme", T("A problem on a match", "Un problème sur un match"), T("Ciprio needs something from you.", "Ciprio a besoin de quelque chose de votre part.")],
+        ["nouveautes", T("Ciprio news", "Nouveautés de Ciprio"), T("New features, at most once a month.", "Nouvelles fonctions, au plus une fois par mois.")]];
+      const on = (k) => (k === "analyse" ? p.notif_email !== false : (pref.notif || {})[k] !== false && !(k === "nouveautes" && (pref.notif || {})[k] === undefined));
+      corps = `<div class="co-card"><h2>${T("E-mail notifications", "Notifications par e-mail")}</h2><p class="sub">${T("Sent to ", "Envoyées à ")}${esc(session.user.email)}</p>
+        <div style="margin-top:10px">${N.map(([k, t, d]) => `<label class="switch"><span><b style="font-weight:500">${t}</b><br><span class="muted small">${d}</span></span><input type="checkbox" data-n="${k}" ${on(k) ? "checked" : ""}></label>`).join("")}</div>
+        <p class="form-msg" id="m"></p></div>`;
+    } else if (onglet === "preferences") corps = `<div class="co-card"><h2>${T("Preferences", "Préférences")}</h2><p class="sub">${T("How Ciprio looks and opens.", "Comment Ciprio s'affiche et s'ouvre.")}</p>
+        <div style="margin-top:10px">
+          <div class="switch"><span>${T("Language", "Langue")}</span><span class="chips"><button type="button" data-l="fr" aria-pressed="${L() === "fr"}">Français</button><button type="button" data-l="en" aria-pressed="${L() === "en"}">English</button></span></div>
+          <div class="switch"><span>${T("Page when I log in", "Page à l'ouverture")}</span><select class="sel" id="acc">${[["/", T("Home", "Accueil")], ["/videos", T("Videos", "Vidéos")], ["/plans", T("Game plans", "Plans de jeu")]].map(([k, t]) => `<option value="${k}" ${(pref.accueil || "/") === k ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+          <div class="switch"><span>${T("Distances", "Distances")}</span><select class="sel" id="uni">${[["m", T("Metres", "Mètres")], ["yd", T("Yards", "Yards")]].map(([k, t]) => `<option value="${k}" ${(pref.unites || "m") === k ? "selected" : ""}>${t}</option>`).join("")}</select></div>
+          <div class="switch"><span>${T("Show the tutorial again", "Revoir le tutoriel")}</span><a class="btn btn-line btn-sm" href="#/tuto">${T("Open", "Ouvrir")}</a></div>
+        </div><p class="form-msg" id="m"></p></div>`;
+    else if (onglet === "abonnement") corps = `<div class="stack"><div class="co-card plan-now"><span class="k">${T("Current plan", "Formule actuelle")}</span><h2>${T("Test access", "Accès test")}</h2>
+          <p class="sub">${T("Free during the test phase: every feature, no commitment, no payment method.", "Gratuit pendant la phase de test : toutes les fonctions, sans engagement, sans moyen de paiement.")}</p>
+          <ul class="tips" style="margin-top:14px"><li><b>✓</b><span>${T("Unlimited matches during the tests", "Matchs illimités pendant les tests")}</span></li><li><b>✓</b><span>${T("Game plans, squad, reports", "Plans de jeu, effectif, rapports")}</span></li><li><b>✓</b><span>${T("Direct support from the Ciprio team", "Accompagnement direct par l'équipe Ciprio")}</span></li></ul></div>
+        <div class="co-card"><h2>${T("Invoices", "Factures")}</h2><p class="sub">${T("No invoice: nothing to pay during the tests.", "Aucune facture : rien à payer pendant les tests.")}</p></div></div>`;
+    else corps = `<div class="stack">
+        <div class="co-card"><h2>${T("Your data", "Vos données")}</h2><p class="sub">${T("Your videos, clicks and plans belong to you. Only you and the Ciprio team (for the analysis) can see them.", "Vos vidéos, vos clics et vos plans vous appartiennent. Seuls vous et l'équipe Ciprio (pour l'analyse) les voient.")}</p>
+          <div class="co-actions" style="margin-top:14px"><button class="btn btn-line btn-sm" id="export" type="button">${T("Download my data (JSON)", "Télécharger mes données (JSON)")}</button></div></div>
+        <div class="co-card"><h2>${T("Legal", "Documents")}</h2><div class="links"><a href="${L() === "fr" ? "/fr" : ""}/privacy" target="_blank" rel="noopener">${T("Privacy policy", "Politique de confidentialité")}<span>→</span></a><a href="${L() === "fr" ? "/fr" : ""}/terms" target="_blank" rel="noopener">${T("Terms of use", "Conditions d'utilisation")}<span>→</span></a></div></div>
+        <div class="co-card danger-zone"><h2>${T("Delete my account", "Supprimer mon compte")}</h2><p class="sub">${T("Your account, your matches and all your data are deleted within 7 days. This cannot be undone.", "Votre compte, vos matchs et toutes vos données sont supprimés sous 7 jours. C'est définitif.")}</p>
+          <div class="co-actions" style="margin-top:14px"><a class="btn btn-danger btn-sm" href="mailto:contact@ciprio.ai?subject=${encodeURIComponent(T("Delete my Ciprio account", "Supprimer mon compte Ciprio"))}&body=${encodeURIComponent(session.user.email)}">${T("Ask for deletion", "Demander la suppression")}</a></div></div></div>`;
+    view.innerHTML = `<div class="co-head"><div><h1>${T("Settings", "Paramètres")}</h1><p>${T("Your profile, your account and your preferences.", "Votre profil, votre compte et vos préférences.")}</p></div></div>
+      <div class="set"><nav class="set-nav">${O.map(([k, t]) => `<a href="#/parametres/${k}"${k === onglet ? ' aria-current="page"' : ""}>${t}</a>`).join("")}</nav><div class="set-body">${corps}</div></div>`;
     oeils();
-    $("logout").addEventListener("click", async () => { await sb.auth.signOut(); D = null; location.hash = "#/"; route(); });
-    view.querySelectorAll("[data-l]").forEach((b) => b.addEventListener("click", () => { CIPRIO.setLang(b.dataset.l); langUI(); route(); }));
-    $("notif").addEventListener("change", async (e) => { await sb.from("profils").update({ notif_email: e.target.checked }).eq("id", session.user.id); D.profil.notif_email = e.target.checked; });
-    $("fp").addEventListener("submit", async (ev) => {
+    if ($("f") && onglet === "profil") $("f").addEventListener("submit", async (ev) => {
       ev.preventDefault();
-      const rec = { nom: $("nom").value.trim() || null, fonction: $("fct").value || null, club: $("club").value.trim() || null, telephone: $("tel").value.trim() || null };
+      const rec = { nom: $("nom").value.trim() || null, fonction: $("fct").value || null, diplome: $("dip").value.trim() || null, telephone: $("tel").value.trim() || null, bio: $("bio").value.trim() || null };
       const { error } = await sb.from("profils").update(rec).eq("id", session.user.id);
-      if (error) return msg($("mp"), error.message, "err");
-      Object.assign(D.profil, rec); menu("/parametres"); msg($("mp"), T("Saved.", "Enregistré."), "ok");
+      if (error) return msg($("m"), error.message, "err");
+      Object.assign(D.profil, rec); menu("/parametres"); msg($("m"), T("Saved.", "Enregistré."), "ok");
     });
-    $("fs").addEventListener("submit", async (ev) => {
+    if ($("logout")) $("logout").addEventListener("click", async () => { await sb.auth.signOut(); D = null; location.hash = "#/"; route(); });
+    if ($("logoutAll")) $("logoutAll").addEventListener("click", async () => { await sb.auth.signOut({ scope: "global" }); D = null; location.hash = "#/"; route(); });
+    if ($("fs")) $("fs").addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const pw = $("mdp").value;
       if (pw.length < 8) return msg($("ms"), T("Password too short: at least 8 characters.", "Mot de passe trop court : au moins 8 caractères."), "err");
+      if (pw !== $("mdp2").value) return msg($("ms"), T("The two passwords differ.", "Les deux mots de passe sont différents."), "err");
       const { error } = await sb.auth.updateUser({ password: pw });
       if (error) return msg($("ms"), authErr(error), "err");
-      $("mdp").value = ""; msg($("ms"), T("Password changed.", "Mot de passe changé."), "ok");
+      $("mdp").value = $("mdp2").value = ""; msg($("ms"), T("Password changed.", "Mot de passe changé."), "ok");
+    });
+    view.querySelectorAll("[data-n]").forEach((el) => el.addEventListener("change", async () => {
+      let error;
+      if (el.dataset.n === "analyse") { ({ error } = await sb.from("profils").update({ notif_email: el.checked }).eq("id", session.user.id)); if (!error) D.profil.notif_email = el.checked; }
+      else error = await savePref("notif", { ...((D.profil.preferences || {}).notif || {}), [el.dataset.n]: el.checked });
+      msg($("m"), error ? error.message : T("Saved.", "Enregistré."), error ? "err" : "ok");
+    }));
+    view.querySelectorAll("[data-l]").forEach((b) => b.addEventListener("click", () => { CIPRIO.setLang(b.dataset.l); langUI(); route(); }));
+    if ($("acc")) $("acc").addEventListener("change", async (e) => { const er = await savePref("accueil", e.target.value); msg($("m"), er ? er.message : T("Saved.", "Enregistré."), er ? "err" : "ok"); });
+    if ($("uni")) $("uni").addEventListener("change", async (e) => { const er = await savePref("unites", e.target.value); msg($("m"), er ? er.message : T("Saved.", "Enregistré."), er ? "err" : "ok"); });
+    if ($("export")) $("export").addEventListener("click", () => {
+      const data = { exporte_le: new Date().toISOString(), compte: { email: session.user.email }, profil: D.profil, equipes: D.equipes, joueurs: D.joueurs, plans_de_jeu: D.plans, matchs: D.matchs };
+      const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })); a.download = "ciprio-mes-donnees.json"; a.click();
     });
   }
 
@@ -782,18 +927,28 @@
     $("side").hidden = !session;
     $("shell").classList.toggle("out", !session);
     if (!session) { D = null; $("prog").hidden = true; $("avatar").hidden = true; if (codeCtx) return codeView(); return authView(location.hash === "#/inscription" ? "signup" : "login"); }
-    if (!D) { view.innerHTML = `<p class="muted">${T("Loading…", "Chargement…")}</p>`; await charger(); }
+    let premier = false;
+    if (!D) { view.innerHTML = `<p class="muted">${T("Loading…", "Chargement…")}</p>`; await charger(); premier = true; }
+    if (premier && (!location.hash || location.hash === "#/" || location.hash === "#/inscription")) {
+      const vu = (() => { try { return localStorage.getItem("ciprio-tuto-vu"); } catch { return "1"; } })();
+      const acc = (D.profil.preferences || {}).accueil;
+      if (!vu && !D.matchs.length) history.replaceState(null, "", "#/tuto");
+      else if (acc && acc !== "/") history.replaceState(null, "", "#" + acc);
+    }
     const h = location.hash.replace(/^#/, "") || "/";
     menu(h);
     majProgression();
     window.scrollTo(0, 0);
     if (h === "/nouveau") return nouveauView();
-    if (h === "/videos") return videosView();
+    const mv = h.match(/^\/videos(?:\/(tous|pour_vous|en_cours|termines|erreur))?$/);
+    if (mv) return videosView(mv[1]);
+    if (h === "/tuto") return tutoView();
     if (h === "/rapports") return rapportsView();
     if (h === "/plans") return plansView();
     if (h === "/equipe") return equipeView();
     if (h === "/aide") return aideView();
-    if (h === "/parametres") return parametresView();
+    const ms = h.match(/^\/parametres(?:\/(\w+))?$/);
+    if (ms) return parametresView(ms[1]);
     const mp = h.match(/^\/plan\/(nouveau|[0-9a-f-]{36})$/);
     if (mp) return planView(mp[1]);
     const mm = h.match(/^\/match\/([0-9a-f-]{36})(?:\/(suivi|plan|rapport|infos))?$/);

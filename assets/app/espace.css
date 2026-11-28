@@ -272,3 +272,75 @@ dialog.dlg .co-actions{justify-content:space-between;margin-top:10px}
   .crow>*:not(.iconbtn){grid-column:1}
   .bars div{grid-template-columns:110px 1fr 40px}
 }
+
+/* ---- v2 (corrections du fondateur, 28/11) ---- */
+a.kpi{text-decoration:none;color:inherit;position:relative;transition:border-color .15s,transform .15s}
+a.kpi:hover{border-color:var(--ink-2);transform:translateY(-1px)}
+a.kpi .go{position:absolute;right:18px;top:18px;color:var(--muted);transition:transform .15s}
+a.kpi:hover .go{transform:translateX(3px);color:var(--ink)}
+/* onglet « Comment ça marche » : violet, toujours visible */
+:root{--violet:#7c3aed;--violet-bg:#f3edff;--violet-line:#ddd0fb}
+.co-side a.tuto{background:var(--violet-bg);color:var(--violet);box-shadow:inset 0 0 0 1px var(--violet-line);margin-bottom:10px}
+.co-side a.tuto:hover,.co-side a.tuto[aria-current="page"]{background:var(--violet);color:#fff;box-shadow:none}
+.tuto-card{display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap;text-decoration:none;color:inherit;background:linear-gradient(120deg,var(--violet-bg),#fff 70%);border-color:var(--violet-line)}
+.tuto-card .k{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--violet)}
+.tuto-card h2{margin:4px 0 6px}
+.tuto-card p{color:var(--ink-2);font-size:.9rem;max-width:520px}
+.tuto-card .btn{background:var(--violet);color:#fff;border:0}
+.tuto-card:hover{border-color:var(--violet)}
+.tuto-hero{padding:30px 32px;border-radius:16px;background:linear-gradient(120deg,var(--violet),#5b21b6);color:#fff;margin-bottom:26px}
+.tuto-hero .k{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;opacity:.8}
+.tuto-hero h1{font-size:clamp(1.8rem,3.4vw,2.5rem);margin:8px 0}
+.tuto-hero p{opacity:.9;max-width:620px}
+.tl{list-style:none;margin:0;padding:0;display:grid;gap:14px;position:relative}
+.tl::before{content:"";position:absolute;left:19px;top:20px;bottom:20px;width:2px;background:var(--violet-line)}
+.tl>li{display:grid;grid-template-columns:40px 1fr;gap:16px;position:relative}
+.tl .n{width:40px;height:40px;border-radius:50%;background:var(--violet);color:#fff;display:grid;place-items:center;font-weight:600;z-index:1}
+.tl>li.auto .n{background:#fff;color:var(--violet);border:2px solid var(--violet-line)}
+.tl-h{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:baseline}
+.tl .who{font-family:var(--f-mono);font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;color:var(--violet)}
+.tl>li.auto .who{color:var(--muted)}
+.tl ul{margin:12px 0 0;padding-left:18px;display:grid;gap:6px;color:var(--ink-2);font-size:.93rem}
+.tl .btn{margin-top:14px}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.tuto-end{background:var(--violet-bg);border-color:var(--violet-line)}
+/* composition sur le terrain */
+.pitch.big{max-width:300px}
+.pitch i{font-style:normal;font-size:.66rem;font-weight:700;display:grid;place-items:center;color:var(--ink);font-family:var(--f-mono)}
+.pitch.big i{width:24px;height:24px;margin:-12px 0 0 -12px}
+.pitch em{position:absolute;transform:translate(-50%,14px);font-style:normal;font-size:.62rem;font-weight:600;color:#fff;white-space:nowrap;text-shadow:0 1px 2px rgba(0,0,0,.6);z-index:1;max-width:70px;overflow:hidden;text-overflow:ellipsis}
+.compo{display:grid;gap:6px;margin-top:14px}
+.compo label{display:grid;grid-template-columns:110px 1fr;gap:10px;align-items:center;font-size:.84rem;color:var(--muted)}
+.compo select{font:inherit;font-size:.86rem;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink);width:100%}
+/* fiche joueur */
+dialog.dlg.wide{width:min(720px,calc(100vw - 32px));max-height:calc(100vh - 40px)}
+.dsec{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:500;margin:18px 0 10px;padding-top:14px;border-top:1px solid var(--line)}
+dialog.dlg h2+.dsec{border-top:0;padding-top:0;margin-top:0}
+.check-inline{display:flex!important;align-items:center;gap:10px;height:42px;font-weight:500;cursor:pointer}
+.check-inline input{width:18px;height:18px;accent-color:var(--ink)}
+.tag.strong{background:var(--ink);color:#fff;border-color:var(--ink)}
+.tag.cap{background:#fff7d6;border-color:#f2d978;color:#7a5b00}
+.tag.st-blesse{background:#fdecec;border-color:#f5c2c3;color:#a1262a}
+.tag.st-suspendu{background:#fff4e5;border-color:#f6d3a1;color:#8a4b00}
+.tag.st-absent{background:var(--bg)}
+/* paramètres à onglets */
+.set{display:grid;grid-template-columns:230px minmax(0,1fr);gap:24px;align-items:start}
+.set-nav{display:flex;flex-direction:column;gap:2px;position:sticky;top:90px}
+.set-nav a{padding:10px 14px;border-radius:10px;text-decoration:none;color:var(--ink-2);font-size:.92rem;font-weight:500}
+.set-nav a:hover{background:var(--surface);color:var(--ink)}
+.set-nav a[aria-current="page"]{background:var(--surface);color:var(--ink);box-shadow:inset 0 0 0 1px var(--line),inset 3px 0 0 var(--ink)}
+.set-body{max-width:760px}
+.avatar.xl{width:56px;height:56px;font-size:1.1rem}
+select.sel{font:inherit;font-size:.9rem;padding:7px 10px;border:1px solid var(--line);border-radius:8px;background:#fff}
+.plan-now{background:linear-gradient(120deg,#e9f7ef,#fff 70%);border-color:#bfe8cf}
+.plan-now .k{font-family:var(--f-mono);font-size:.68rem;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.plan-now h2{font-size:1.5rem;margin:6px 0 4px}
+.danger-zone{border-color:#f5c2c3}
+@media (max-width:900px){.set{grid-template-columns:1fr}.set-nav{position:static;flex-direction:row;overflow-x:auto;scrollbar-width:none}.set-nav a{white-space:nowrap}}
+@media (max-width:760px){.co-side a.tuto{margin:0 6px 0 0}.tl::before{left:15px}.tl>li{grid-template-columns:32px 1fr;gap:10px}.tl .n{width:32px;height:32px;font-size:.85rem}.compo label{grid-template-columns:90px 1fr}}
+.crow:not(.ind){grid-template-columns:minmax(0,1fr) minmax(0,1fr) 36px}
+.crow:not(.ind) .txt{grid-column:1/3;grid-row:2}
+.crow:not(.ind) .iconbtn{grid-column:3;grid-row:1}
+.rowlist .crow:not(.ind){padding-bottom:10px;border-bottom:1px dashed var(--line)}
+.rowlist .crow:not(.ind):last-child{border-bottom:0;padding-bottom:0}
+@media (max-width:760px){.crow:not(.ind){grid-template-columns:minmax(0,1fr) 36px}.crow:not(.ind)>*:not(.iconbtn){grid-column:1;grid-row:auto}.crow:not(.ind) .iconbtn{grid-column:2;grid-row:1}}
