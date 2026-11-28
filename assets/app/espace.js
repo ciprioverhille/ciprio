@@ -279,6 +279,9 @@
       const email = $("email").value.trim().toLowerCase(), password = $("mdp").value;
       if (!email || !password) return msg(m, T("Fill in your e-mail and password.", "Indiquez votre e-mail et votre mot de passe."), "err");
       msg(m, T("One moment…", "Un instant…"));
+      const bouton = $("f").querySelector("button[type=submit]"), texte = bouton.textContent;
+      bouton.disabled = true; bouton.classList.add("busy"); bouton.textContent = tab === "signup" ? T("Creating…", "Création…") : T("Logging in…", "Connexion…");
+      setTimeout(() => { if (bouton.isConnected) { bouton.disabled = false; bouton.classList.remove("busy"); bouton.textContent = texte; } }, 8000);
       if (tab === "signup") {
         if (password.length < 8) return msg(m, T("Password too short: at least 8 characters.", "Mot de passe trop court : au moins 8 caractères."), "err");
         const nom = $("nom").value.trim(), club = $("club").value.trim();
@@ -1185,7 +1188,7 @@
       if (error) return msg($("m"), error.message, "err");
       Object.assign(D.profil, rec); menu("/parametres"); msg($("m"), T("Saved.", "Enregistré."), "ok");
     });
-    if ($("logout")) $("logout").addEventListener("click", async () => { await sb.auth.signOut(); D = null; location.hash = "#/"; route(); });
+    if ($("logout")) $("logout").addEventListener("click", async () => { await sb.auth.signOut({ scope: "local" }); D = null; location.hash = "#/"; route(); });
     if ($("logoutAll")) $("logoutAll").addEventListener("click", async () => { await sb.auth.signOut({ scope: "global" }); D = null; location.hash = "#/"; route(); });
     if ($("fs")) $("fs").addEventListener("submit", async (ev) => {
       ev.preventDefault();
@@ -1230,12 +1233,16 @@
   }
 
   async function route() {
+    const ld = view.querySelector(".co-load span"); if (ld) ld.textContent = T("Loading…", "Chargement…");
     ({ data: { session } } = await sb.auth.getSession());
+    fermerMenu();
     $("side").hidden = !session;
+    $("burger").hidden = !session;
+    $("brand").href = session ? "#/" : "/";   // connecté : le logo ramène à l'accueil du compte, pas à la vitrine
     $("shell").classList.toggle("out", !session);
     if (!session) { D = null; $("prog").hidden = true; $("avatar").hidden = true; if (codeCtx) return codeView(); return authView(location.hash === "#/inscription" ? "signup" : "login"); }
     let premier = false;
-    if (!D) { view.innerHTML = `<p class="muted">${T("Loading…", "Chargement…")}</p>`; await charger(); premier = true; }
+    if (!D) { view.innerHTML = `<div class="co-load" role="status"><img src="/logo.svg" alt=""><span>${T("Loading your space…", "Chargement de votre espace…")}</span></div>`; await charger(); premier = true; }
     if (premier && (!location.hash || location.hash === "#/" || location.hash === "#/inscription")) {
       const vu = (() => { try { return localStorage.getItem("ciprio-tuto-vu"); } catch { return "1"; } })();
       const acc = (D.profil.preferences || {}).accueil;
@@ -1263,6 +1270,16 @@
     if (mm) return matchView(mm[1], mm[2] || "suivi");
     return accueilView();
   }
+  // téléphone : menu vertical qui s'ouvre par les trois traits, contenu derrière flouté en blanc
+  function fermerMenu() { document.body.classList.remove("menu-ouvert"); $("voile").hidden = true; $("burger").setAttribute("aria-expanded", "false"); }
+  $("burger").addEventListener("click", () => {
+    const o = !document.body.classList.contains("menu-ouvert");
+    document.body.style.setProperty("--menu-top", Math.round(document.querySelector(".co-top").getBoundingClientRect().bottom) + "px");
+    document.body.classList.toggle("menu-ouvert", o); $("voile").hidden = !o; $("burger").setAttribute("aria-expanded", String(o));
+  });
+  $("voile").addEventListener("click", fermerMenu);
+  $("side").addEventListener("click", (e) => { if (e.target.closest("a")) fermerMenu(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") fermerMenu(); });
   window.addEventListener("hashchange", route);
   sb.auth.onAuthStateChange((ev) => { if (ev === "SIGNED_OUT") { D = null; route(); } });
   route();

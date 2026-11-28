@@ -513,7 +513,7 @@ body{background:var(--bg)}
     const { data: { session } } = await sb.auth.getSession();
     const email = session?.user?.email || "";
     const ok = session && email.toLowerCase() === ADMIN_EMAIL;
-    if (session && !ok) { await sb.auth.signOut(); $("l-msg").textContent = "Accès réservé."; $("l-msg").className = "form-msg err"; }
+    if (session && !ok) { await sb.auth.signOut({ scope: "local" }); $("l-msg").textContent = "Accès réservé."; $("l-msg").className = "form-msg err"; }
     $("login-view").hidden = !!ok; $("dash").hidden = !ok; $("userbox").hidden = !ok;
     if (!ok) return;
     if (location.hash.includes("access_token")) history.replaceState(null, "", location.pathname);
@@ -1084,7 +1084,7 @@ body{background:var(--bg)}
     if (error) return fail("l-msg", error);
     msg.textContent = "Lien envoyé. Ouvre l'e-mail et clique sur le lien."; msg.className = "form-msg ok";
   });
-  $("logout").addEventListener("click", async () => { await sb.auth.signOut(); show(); });
+  $("logout").addEventListener("click", async () => { await sb.auth.signOut({ scope: "local" }); show(); });
   $("add-exp").addEventListener("click", () => openExp(null));
   $("add-rev").addEventListener("click", () => openRev(null));
   $("e-save").addEventListener("click", saveExp);

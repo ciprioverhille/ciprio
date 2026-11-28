@@ -3,7 +3,11 @@
 (() => {
   const SUPABASE_URL = "https://pazzrgvkgmdgqmtscspl.supabase.co";
   const SUPABASE_KEY = "sb_publishable_dkQEIR4jjdhUVmG1pU7eIw_qhpf2NoG";
-  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+  // Connexion du coach gardée dans le navigateur sous SA propre clé : l'admin (même domaine, même Supabase) a la sienne,
+  // ouvrir l'admin ne déconnecte donc plus le compte coach. Une fois connecté, on reste connecté (jeton renouvelé seul).
+  const CLE = "ciprio-coach-auth", ANCIENNE = "sb-pazzrgvkgmdgqmtscspl-auth-token";
+  try { if (!localStorage.getItem(CLE) && localStorage.getItem(ANCIENNE)) localStorage.setItem(CLE, localStorage.getItem(ANCIENNE)); } catch {}
+  const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: CLE } });
 
   // langue : même choix que la page de pointage (gardé dans le navigateur)
   // langue demandée par le lien du site vitrine (?lang=fr / ?lang=en), sinon le choix gardé, sinon le navigateur
