@@ -36,7 +36,7 @@ Les règles RLS autorisent uniquement l'insertion depuis le site. Consultation :
 
 Le coach crée son compte, envoie ses matchs, règle le terrain et suit l'état de chaque analyse. Pages non indexées.
 
-- `app/index.html` : connexion (e-mail + mot de passe ; code reçu par e-mail à la création du compte et pour un mot de passe oublié), « Mes matchs », « Nouveau match », fiche d'un match.
+- `app/index.html` : connexion (e-mail + mot de passe avec œil pour l afficher ; code reçu par e-mail à la création du compte et pour un mot de passe oublié). Une fois connecté (brouillon du fondateur, 28/11) : barre du haut = logo · tâche en cours (barre de progression du match le plus récent qui avance) · ENG/FR ; menu de gauche = Nouvelle vidéo, Vidéos, Votre équipe (à venir), Paramètres (nom, club, déconnexion) ; accueil « Bienvenue, nom ».
 - `app/pointage.html` : page de pointage du terrain. **Fichier généré** depuis `ciprio-lab/annot_modeles/index.html` par `python tools/porter_pointage.py` : ne jamais la modifier à la main, relancer le script après chaque changement de la page du labo.
 - `assets/app/commun.js` : connexion Supabase (clé publique), langue, noms des états d'un match.
 - `assets/app/pointage-pont.js` : redirige les appels de la page du labo (`/api/list`, `/api/label`, `/api/refine`, `/api/prevoir`, `/api/completer`) vers Supabase. Les calculs passent par la table `taches` et sont faits par `ciprio-lab/pont_site.py ecouter`.

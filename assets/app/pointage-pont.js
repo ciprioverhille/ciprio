@@ -14,10 +14,10 @@
   let PAGE = {};              // matchs.page : hints, annonce, stade_mesure
   let USER = null;
 
-  // ---------- bandeau : retour à « Mes matchs » + état du calcul ----------
+  // ---------- bandeau : retour aux « Vidéos » + état du calcul ----------
   const bandeau = document.createElement("div");
   bandeau.id = "co-bandeau";
-  bandeau.innerHTML = `<a href="/app${MATCH ? "#/match/" + MATCH : ""}">← ${T("My matches", "Mes matchs")}</a><span id="co-etat"></span>`;
+  bandeau.innerHTML = `<a href="/app${MATCH ? "#/match/" + MATCH : ""}">← ${T("Videos", "Vidéos")}</a><span id="co-etat"></span>`;
   const style = document.createElement("style");
   style.textContent = `#co-bandeau{position:fixed;left:12px;bottom:12px;z-index:60;display:flex;gap:10px;align-items:center;font:500 13px/1.2 Geist,Arial,sans-serif}
     #co-bandeau a{background:#fff;border:1px solid #e5e7e5;border-radius:999px;padding:7px 12px;color:#0b0d0c;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.06)}
@@ -35,12 +35,12 @@
     const { data: { session } } = await sb.auth.getSession();
     if (!session) { location.href = "/app"; throw new Error("non connecté"); }
     USER = session.user;
-    if (!MATCH) { bloquer(T("No match given.", "Aucun match indiqué.") + ` <a href="/app">${T("My matches", "Mes matchs")}</a>`); throw new Error("pas de match"); }
+    if (!MATCH) { bloquer(T("No match given.", "Aucun match indiqué.") + ` <a href="/app">${T("Videos", "Vidéos")}</a>`); throw new Error("pas de match"); }
     const [{ data: m, error: e1 }, { data: imgs, error: e2 }] = await Promise.all([
       sb.from("matchs").select("id,page,coach_id").eq("id", MATCH).maybeSingle(),
       sb.from("images_pointage").select("id,nom,ordre,demandes,mini,chemin").eq("match_id", MATCH).order("ordre").order("nom"),
     ]);
-    if (e1 || e2 || !m) { bloquer(T("Match not found.", "Match introuvable.") + ` <a href="/app">${T("My matches", "Mes matchs")}</a>`); throw new Error("match introuvable"); }
+    if (e1 || e2 || !m) { bloquer(T("Match not found.", "Match introuvable.") + ` <a href="/app">${T("Videos", "Vidéos")}</a>`); throw new Error("match introuvable"); }
     if (!imgs.length) { bloquer(T("The images of this match aren't ready yet.", "Les images de ce match ne sont pas encore prêtes.") + ` <a href="/app#/match/${MATCH}">${T("Back", "Retour")}</a>`); throw new Error("pas d'images"); }
     PAGE = m.page || {};
     const { data: urls, error: e3 } = await sb.storage.from("pointage").createSignedUrls(imgs.map((x) => x.chemin), 6 * 3600);
