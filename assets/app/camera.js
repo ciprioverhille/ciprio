@@ -33,12 +33,13 @@
     let w = 0, h = 0, dpr = 1, anime = true, tPrec = performance.now(), now = 0;
 
     // ---------------------------------------------------------------- jeu simulé (repris de la vitrine)
-    const pion = (x, y, i, ph) => ({ x, y, bx: x, by: y, i, ph });
+    const pion = (x, y, i, ph) => ({ x, y, vx: 0, vy: 0, bx: x, by: y, i, ph });
     const A = BASE_A.map(([x, y], i) => pion(x, y, i, i * 1.7));
     const B = BASE_B.map(([x, y], i) => pion(x, y, i, i * 2.3));
     const eq = (s) => (s === "a" ? A : B);
     const ballon = { x: L / 2, y: W / 2, fx: 0, fy: 0, tx: 0, ty: 0, k: 1, dur: 0.6, hold: 0.4, team: "a", idx: 6, left: 4 };
     let press = null;
+    const repere = { x: L / 2, y: W / 2 }, equipe = { v: 1 }, proche = { cote: "", i: -1 };   // ballon « lissé » : les blocs coulissent sans à-coups pendant les passes
     const proches = (list, x, y, n, sauf) => list.map((p, i) => ({ p, i, d: Math.hypot(p.x - x, p.y - y) }))
       .filter((o) => o.i !== sauf).sort((a, b) => a.d - b.d).slice(0, n);
 
@@ -50,7 +51,7 @@
         const n = proches(eq(ballon.team), ballon.x, ballon.y, 1)[0];
         ballon.idx = n.i;
         ballon.left = Math.round(rnd(3, 7));
-        press = { depuis: now };
+        press = { depuis: now, qui: proches(eq(ballon.team === "a" ? "b" : "a"), n.p.x, n.p.y, 2).map((o) => o.i) };
         lancer(n.p.x, n.p.y, 0.3);
         return;
       }
@@ -77,25 +78,36 @@
         if (ballon.hold <= 0) action();
       }
       if (press && now - press.depuis > 2.4) press = null;
-      // les deux blocs coulissent ensemble avec le ballon
+      // les deux blocs coulissent ensemble avec le ballon (repère lissé), et le décalage attaque/défense change en douceur
+      const kr = Math.min(1, dt * 1.1);
+      repere.x += (ballon.x - repere.x) * kr; repere.y += (ballon.y - repere.y) * kr;
       const aBall = ballon.team === "a";
-      const sa = clamp((ballon.x - L / 2) * 0.42 + (aBall ? 7 : -5), -12, 22);
-      const sb = clamp((ballon.x - L / 2) * 0.42 + (aBall ? 5 : -7), -22, 12);
-      const ys = (ballon.y - W / 2) * 0.28;
+      equipe.v += ((aBall ? 1 : -1) - equipe.v) * Math.min(1, dt * 0.8);
+      const sa = clamp((repere.x - L / 2) * 0.42 + 1 + equipe.v * 6, -12, 22);
+      const sb = clamp((repere.x - L / 2) * 0.42 - 1 + equipe.v * 6, -22, 12);
+      const ys = (repere.y - W / 2) * 0.28;
       const def = ballon.team === "a" ? "b" : "a";
-      const presseurs = press ? proches(eq(def), ballon.x, ballon.y, 3).map((o) => o.i) : [];
+      const presseurs = press ? press.qui : [];
+      // le défenseur qui sort sur le porteur ne change que si un autre est nettement plus près
+      const cand = proches(eq(def), ballon.x, ballon.y, 1)[0];
+      if (proche.cote !== def || proche.i < 0) Object.assign(proche, { cote: def, i: cand.i });
+      else { const actuel = eq(def)[proche.i]; if (Math.hypot(actuel.x - ballon.x, actuel.y - ballon.y) > cand.d + 6) proche.i = cand.i; }
       const bouger = (list, shift, cote) => list.forEach((p, i) => {
         let tx = p.bx + (i === 0 ? shift * 0.12 : shift) + Math.sin(now * 0.9 + p.ph) * 1.2;
         let ty = p.by + (i === 0 ? ys * 0.3 : ys) + Math.cos(now * 0.7 + p.ph) * 1.2;
         if (cote === ballon.team && i === ballon.idx) { tx = ballon.k < 1 ? ballon.tx : p.x; ty = ballon.k < 1 ? ballon.ty : p.y; }
         const presse = cote === def && presseurs.includes(i);
         if (presse) { tx = ballon.x + (cote === "a" ? -2.2 : 2.2); ty = ballon.y + (i % 2 ? 1.8 : -1.8); }
-        if (cote === def && !presseurs.length) {
-          const n = proches(list, ballon.x, ballon.y, 1)[0];
-          if (n && n.i === i) { tx = (tx + ballon.x) / 2; ty = (ty + ballon.y) / 2; }
-        }
-        const s = Math.min(1, dt * (presse ? 3.2 : 1.8));
-        p.x = clamp(p.x + (tx - p.x) * s, 1.5, L - 1.5); p.y = clamp(p.y + (ty - p.y) * s, 1.5, W - 1.5);
+        if (cote === def && !presseurs.length && i === proche.i) { tx = (tx + ballon.x) / 2; ty = (ty + ballon.y) / 2; }
+        // mouvement d'un vrai joueur : vitesse et accélération bornées (plus de bonds soudains)
+        const porteur = cote === ballon.team && i === ballon.idx;
+        const vmax = presse || porteur ? 7 : i === 0 ? 3.5 : 5.2, amax = presse || porteur ? 6 : 3.5;
+        const ex = tx - p.x, ey = ty - p.y, d = Math.hypot(ex, ey);
+        const vv = Math.min(vmax, d * 1.4), dx = d > 1e-3 ? (ex / d) * vv : 0, dy = d > 1e-3 ? (ey / d) * vv : 0;
+        let ax = dx - p.vx, ay = dy - p.vy; const an = Math.hypot(ax, ay), amx = amax * dt;
+        if (an > amx) { ax *= amx / an; ay *= amx / an; }
+        p.vx += ax; p.vy += ay;
+        p.x = clamp(p.x + p.vx * dt, 1.5, L - 1.5); p.y = clamp(p.y + p.vy * dt, 1.5, W - 1.5);
       });
       bouger(A, sa, "a"); bouger(B, sb, "b");
     }

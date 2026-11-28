@@ -117,11 +117,15 @@
     const ecran = ([x, y]) => [100 - y, x];
     const monde = (l, t) => [Math.max(3, Math.min(97, t)), Math.max(2, Math.min(98, 100 - l))];
     let choisi = null;   // joueur choisi au doigt (téléphone) : on touche ensuite un pion
+    // historique : chaque geste (pion déplacé, joueur placé ou retiré, pions replacés) peut être annulé par le bouton retour
+    const HIST = [];
+    const memo = () => { HIST.push({ sys, COMPO: COMPO.slice(), POS: POS.map((p) => (p ? p.slice() : null)) }); if (HIST.length > 60) HIST.shift(); };
+    function annuler() { const h = HIST.pop(); if (!h) return; const chg = h.sys !== sys; sys = h.sys; COMPO = h.COMPO; POS = h.POS; dessiner(); if (chg && o.onSys) o.onSys(sys); }
     function dessiner() {
       norm();
       const P = places(sys);
       el.innerHTML = `<div class="tb">
-        <div class="tb-pitch" id="tbp">${lignesSVG}${defaut().map((_, k) => {
+        <div class="tb-pitch" id="tbp">${lignesSVG}<button type="button" class="tb-undo" id="tbUndo" ${HIST.length ? "" : "disabled"} title="${T("Undo the last move", "Annuler le dernier mouvement")}" aria-label="${T("Undo", "Annuler")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>${defaut().map((_, k) => {
           const j = COMPO[k] ? D.joueurs.find((x) => x.id === COMPO[k]) : null, [l, t] = ecran(pos(k));
           return `<div class="tb-pawn${j ? " on" : ""}${k === 0 ? " gk" : ""}" data-k="${k}" style="left:${l}%;top:${t}%" title="${esc(P[k])}${j ? " · " + T("double-click to remove", "double-clic pour retirer") : ""}"><b>${j && j.numero != null ? j.numero : ""}</b><span>${j ? esc(j.nom || j.prenom || "") : esc(P[k])}</span></div>`;
         }).join("")}</div>
@@ -135,6 +139,7 @@
     }
     function assigner(k, id) {
       const avant = COMPO.indexOf(id);
+      memo();
       if (avant >= 0) COMPO[avant] = COMPO[k] && avant !== k ? COMPO[k] : null;   // un joueur déjà placé échange sa place
       COMPO[k] = id;
     }
@@ -150,13 +155,14 @@
       // pions : déplacer (glisser) ; double-clic = retirer le joueur ; toucher après avoir choisi un joueur = le placer
       pitch.querySelectorAll(".tb-pawn").forEach((p) => {
         const k = +p.dataset.k;
-        p.addEventListener("dblclick", () => { COMPO[k] = null; dessiner(); });
+        p.addEventListener("dblclick", () => { if (!COMPO[k]) return; memo(); COMPO[k] = null; dessiner(); });
         p.addEventListener("pointerdown", (ev) => {
           ev.preventDefault(); p.setPointerCapture(ev.pointerId);
           const r = pitch.getBoundingClientRect(), x0 = ev.clientX, y0 = ev.clientY; let bouge = false;
+          const avantSys = sys, avantC = COMPO.slice(), avantP = POS.map((q) => (q ? q.slice() : null));
           p.classList.add("drag");
           const mv = (e) => {
-            if (Math.hypot(e.clientX - x0, e.clientY - y0) > 4) bouge = true;
+            if (!bouge && Math.hypot(e.clientX - x0, e.clientY - y0) > 4) { bouge = true; HIST.push({ sys: avantSys, COMPO: avantC, POS: avantP }); }
             if (!bouge) return;
             const l = ((e.clientX - r.left) / r.width) * 100, t = ((e.clientY - r.top) / r.height) * 100, w = monde(l, t), [a, b] = ecran(w);
             p.style.left = a + "%"; p.style.top = b + "%"; POS[k] = w;
@@ -188,12 +194,13 @@
         };
         document.addEventListener("pointermove", mv); document.addEventListener("pointerup", up);
       }));
-      $("tbReset").addEventListener("click", () => { POS = []; dessiner(); });
+      $("tbReset").addEventListener("click", () => { if (!POS.some(Boolean)) return; memo(); POS = []; dessiner(); });
+      $("tbUndo").addEventListener("click", annuler);
       if ($("tbAdd")) $("tbAdd").addEventListener("click", o.inscrire);
     }
     dessiner();
     return {
-      setSys(s) { sys = s; POS = []; dessiner(); },
+      setSys(s) { if (s === sys) return; memo(); sys = s; POS = []; dessiner(); },
       get: () => ({ composition: COMPO.slice(), positions: POS.map((p) => (p ? p.map((v) => Math.round(v * 10) / 10) : null)) }),
     };
   }
@@ -471,16 +478,24 @@
           <ol class="st-steps">${ETATS.map((e, j) => `<li class="${j < iCur ? "on" : j === iCur ? "now" : ""}">${esc(T(e.en, e.fr))}</li>`).join("")}</ol>
         </div>
       </section>`
-      : `
-      <section class="stage blanc" aria-label="${T("No video yet", "Aucune vidéo en cours")}">
+      : (() => {
+        // rien ne charge : même caméra, mêmes couleurs ; on montre le dernier match terminé s'il existe
+        const der = finis.slice().sort((a, b) => new Date(b.date_match || b.maj_le) - new Date(a.date_match || a.maj_le))[0];
+        const nous = D.equipe ? D.equipe.nom : T("Your team", "Votre équipe");
+        const affiche = der ? (der.adversaire ? `${nous} ${T("vs", "contre")} ${der.adversaire}` : der.titre) : "";
+        return `
+      <section class="stage vert repos" aria-label="${T("No match loading", "Aucun match en train de charger")}">
         <canvas id="cam" aria-hidden="true"></canvas>
         <div class="stage-top">
           <div class="st-l"><span class="label">${esc(prenom ? `${salut}, ${prenom}` : salut)} · ${esc(dateTxt)}</span>
-            <h1>${M.length ? T("No analysis in progress.", "Aucune analyse en cours.") : T("You haven't sent a video yet.", "Vous n'avez pas encore chargé de vidéo.")}</h1>
-            <p>${T("Start with the “New video” button: Ciprio takes care of the rest.", "Commencez avec le bouton « Nouvelle vidéo » : Ciprio s'occupe du reste.")}</p></div>
-          <div class="st-r"><a class="btn btn-ink" href="#/nouveau">${T("New video", "Nouvelle vidéo")}</a></div>
+            ${der ? `<h1>${T("Your last match", "Votre dernier match")}</h1>
+            <p><b>${esc(affiche)}</b>${score(der) ? " · " + esc(score(der)) : ""}${der.date_match ? " — " + esc(fmtDate(der.date_match, { day: "numeric", month: "long" })) : ""}. ${T("No match is loading.", "Aucun match n'est en train de charger.")}</p>`
+            : `<h1>${M.length ? T("No match is loading.", "Aucun match n'est en train de charger.") : T("You haven't sent a video yet.", "Vous n'avez pas encore chargé de vidéo.")}</h1>
+            <p>${T("Start with the “New video” button: Ciprio takes care of the rest.", "Commencez avec le bouton « Nouvelle vidéo » : Ciprio s'occupe du reste.")}</p>`}</div>
+          <div class="st-r">${der ? `<a class="btn btn-line-w" href="#/match/${der.id}/rapport">${T("See the report", "Voir le rapport")}</a>` : ""}<a class="btn btn-ink" href="#/nouveau">${T("New video", "Nouvelle vidéo")}</a></div>
         </div>
       </section>`;
+      })();
 
     // ---- vos derniers rapports : détaillés, match par match
     const carteRapport = (m) => {
@@ -548,7 +563,7 @@
         </div>
       </div>`;
     if (arreterCamera) arreterCamera();
-    if (window.CIPRIO_CAMERA) arreterCamera = CIPRIO_CAMERA.monter($("cam"), { mode: cur ? "vert" : "blanc" });
+    if (window.CIPRIO_CAMERA) arreterCamera = CIPRIO_CAMERA.monter($("cam"), { mode: "vert" });
   }
 
   // ================================================================ NOUVELLE VIDÉO
@@ -928,7 +943,7 @@
     if (id === "nouveau" && !COMPO.some(Boolean) && D.equipe && (D.equipe.composition || []).some(Boolean) && D.equipe.systeme === p.systeme) { COMPO = D.equipe.composition.slice(); POSI = (D.equipe.positions || []).slice(); }
     let TB = null;
     const brouillon = () => ({ ...p, nom: $("nom").value, systeme: $("sys").value, consignes: C, individuelles: IND, ...TB.get(), notes: $("notes").value });
-    const drawCompo = () => { TB = tableau($("board"), { sys: $("sys").value, compo: COMPO, positions: POSI, inscrire: () => joueurDlg(null, () => { planView.brouillon = { id, p: brouillon() }; planView(id); }) }); };
+    const drawCompo = () => { TB = tableau($("board"), { sys: $("sys").value, compo: COMPO, positions: POSI, onSys: (v) => { $("sys").value = v; $("sysLabel").textContent = v; }, inscrire: () => joueurDlg(null, () => { planView.brouillon = { id, p: brouillon() }; planView(id); }) }); };
     drawC(); drawI(); drawCompo();
     $("presets").querySelectorAll("button").forEach((b) => b.addEventListener("click", () => { const x = SUGG[b.dataset.t]; C.push({ theme: b.dataset.t, texte: x ? (L() === "fr" ? x[1] : x[0]) : "", mesure: "" }); drawC(); }));
     $("addP").addEventListener("click", () => { C.push({ theme: "perso", texte: "", mesure: "" }); drawC(); const t = $("lp").querySelectorAll("textarea"); if (t.length) t[t.length - 1].focus(); });
@@ -975,7 +990,7 @@
           <dt>${T("Away shirt", "Maillot extérieur")}</dt><dd><span class="swatch" style="background:${esc(e.couleur_exterieur || "#fff")}"></span></dd>
           <dt>${T("Ground", "Stade")}</dt><dd>${esc(e.stade || "–")}</dd></dl></div>
       </div>`;
-    const TB = tableau($("board"), { sys: e.systeme || "4-3-3", compo: e.composition || [], positions: e.positions || [], fiche: (j) => joueurDlg(j), inscrire: () => joueurDlg(null) });
+    const TB = tableau($("board"), { sys: e.systeme || "4-3-3", compo: e.composition || [], positions: e.positions || [], onSys: (v) => { $("sys").value = v; }, fiche: (j) => joueurDlg(j), inscrire: () => joueurDlg(null) });
     $("sys").addEventListener("change", () => TB.setSys($("sys").value));
     $("saveC").addEventListener("click", async () => {
       const { error } = await sb.from("equipes").update({ systeme: $("sys").value, ...TB.get() }).eq("id", e.id);
@@ -1038,9 +1053,10 @@
       <div class="field"><span class="flabel">${T("Other positions", "Autres postes")}</span><div class="chips" id="jsec">${POSTES.map((p) => `<button type="button" data-p="${p[0]}" aria-pressed="${sec.has(p[0])}" title="${esc(L() === "fr" ? p[2] : p[3])}">${esc(L() === "fr" ? p[0] : p[1])}</button>`).join("")}</div></div>
       <div class="frow"><div class="field"><label for="jst">${T("Status", "Statut")}</label><select id="jst">${STATUTS.map((x) => `<option value="${x[0]}" ${v.statut === x[0] ? "selected" : ""}>${L() === "fr" ? x[1] : x[2]}</option>`).join("")}</select></div>
         <div class="field"><span class="flabel">&nbsp;</span><label class="check-inline"><input id="jcap" type="checkbox" ${v.capitaine ? "checked" : ""}>${T("Captain", "Capitaine")}</label></div></div>
-      <h3 class="dsec">${T("Physical", "Physique")}</h3>
+      <details class="dopt" ${v.taille_cm != null || v.poids_kg != null ? "open" : ""}><summary class="dsec">${T("Physical", "Physique")} <em>${T("optional", "optionnel")}</em></summary>
+      <p class="muted small" style="margin:-4px 0 12px">${T("Only if you have this data: it is not needed for the analysis.", "Seulement si vous avez ces données : ce n'est pas nécessaire à l'analyse.")}</p>
       <div class="frow"><div class="field"><label for="jt">${T("Height (cm)", "Taille (cm)")}</label><input id="jt" type="number" min="100" max="230" value="${v.taille_cm ?? ""}"></div>
-        <div class="field"><label for="jw">${T("Weight (kg)", "Poids (kg)")}</label><input id="jw" type="number" min="30" max="150" value="${v.poids_kg ?? ""}"></div></div>
+        <div class="field"><label for="jw">${T("Weight (kg)", "Poids (kg)")}</label><input id="jw" type="number" min="30" max="150" value="${v.poids_kg ?? ""}"></div></div></details>
       <div class="field"><label for="jno">${T("Notes", "Notes")} <small>${T("(strengths, areas to work on…)", "(points forts, axes de travail…)")}</small></label><textarea id="jno">${esc(v.notes || "")}</textarea></div>
       <label class="switch" style="border:0;padding-top:0"><span>${T("In the current squad", "Dans l'effectif actuel")}</span><input id="ja" type="checkbox" ${v.actif ? "checked" : ""}></label>
       <p class="form-msg" id="jm"></p>

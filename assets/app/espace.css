@@ -974,3 +974,20 @@ textarea.prompt:focus{outline:0;border-color:var(--ink);box-shadow:0 0 0 3px rgb
 .tw-stats b{font-family:var(--f-mono);font-size:1.3em;font-weight:500}
 @media (max-width:1100px){.tb{grid-template-columns:1fr}.tb-squad{max-height:none}.tb-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr))}}
 @media (max-width:760px){.tb-pawn b{width:28px;height:28px;font-size:.8rem}.tb-pawn span{font-size:.6rem;max-width:70px}.rp-tabs label{padding:12px 10px;font-size:.8rem}.rp-stats{grid-template-columns:1fr 1fr}.bars div{grid-template-columns:1fr 48px}.bars div .b{grid-column:1/-1;grid-row:2}}
+
+/* accueil au repos (aucun match ne charge) : mêmes couleurs, bouton secondaire clair */
+.stage .btn-line-w{background:transparent;color:#fff;box-shadow:inset 0 0 0 1px rgba(255,255,255,.5);border:0}
+.stage .btn-line-w:hover{box-shadow:inset 0 0 0 1px #fff}
+.stage.repos .st-r{gap:10px;align-items:center}
+/* tableau tactique : bouton retour en haut à droite du terrain */
+.tb-undo{position:absolute;top:10px;right:10px;z-index:6;width:34px;height:34px;border-radius:6px;border:0;background:rgba(255,255,255,.92);color:#0c100e;display:grid;place-items:center;cursor:pointer}
+.tb-undo:hover{background:#fff}
+.tb-undo:disabled{opacity:.35;cursor:default}
+.tb-undo svg{width:18px;height:18px}
+/* fiche joueur : partie Physique optionnelle, repliée */
+.dopt>summary{cursor:pointer;list-style:none}
+.dopt>summary::-webkit-details-marker{display:none}
+.dopt>summary em{font-style:normal;text-transform:none;letter-spacing:0;color:var(--muted);font-family:var(--f-sans,inherit);font-size:.78rem;order:1}
+.dopt>summary::before{content:"+";order:3;color:var(--muted);font-size:.9rem}
+.dopt[open]>summary::before{content:"–"}
+.dopt>summary::after{order:2}
