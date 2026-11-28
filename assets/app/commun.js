@@ -6,6 +6,9 @@
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
 
   // langue : même choix que la page de pointage (gardé dans le navigateur)
+  // langue demandée par le lien du site vitrine (?lang=fr / ?lang=en), sinon le choix gardé, sinon le navigateur
+  const QL = new URLSearchParams(location.search).get("lang");
+  if (QL === "fr" || QL === "en") { try { localStorage.setItem("ciprio-lang", QL); } catch {} }
   let LANG = (() => { try { return localStorage.getItem("ciprio-lang"); } catch { return null; } })() || ((navigator.language || "fr").toLowerCase().startsWith("fr") ? "fr" : "en");
   const T = (en, fr) => (LANG === "fr" ? fr : en);
   const setLang = (l) => { LANG = l; document.documentElement.lang = l; try { localStorage.setItem("ciprio-lang", l); } catch {} };

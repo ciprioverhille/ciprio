@@ -29,6 +29,8 @@ T = [
     ('<a href="/#method">Method</a>', '<a href="/fr#method">Méthode</a>'),
     ('<a href="/#report">Report</a>', '<a href="/fr#report">Rapport</a>'),
     ('<a href="/#access">Request access</a>', '<a href="/fr#access">Demander l\'accès</a>'),
+    ('<a class="nav-login" href="/app?lang=en">Log in</a>', '<a class="nav-login" href="/app?lang=fr">Se connecter</a>'),
+    ('<a class="btn btn-ink" href="/app?lang=en#/inscription">Sign up</a>', '<a class="btn btn-ink" href="/app?lang=fr#/inscription">S\'inscrire</a>'),
     ('<a href="/privacy">Privacy policy</a>', '<a href="/fr/privacy">Politique de confidentialité</a>'),
     ('<a href="/terms">Terms of use</a>', '<a href="/fr/terms">Conditions d\'utilisation</a>'),
     ('<a href="/legal">Legal notice</a>', '<a href="/fr/legal">Mentions légales</a>'),
