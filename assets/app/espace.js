@@ -305,7 +305,7 @@
     const aPointer = D.matchs.filter((x) => x.etat === "a_pointer").length;
     const cur = (k) => (k === h || (k === "/videos" && (h.startsWith("/match/") || h.startsWith("/videos"))) || (k === "/plans" && h.startsWith("/plan/")) || (k === "/parametres" && h.startsWith("/parametres")) ? ' aria-current="page"' : "");
     $("side").innerHTML = `
-      <a class="primary" href="#/nouveau"${cur("/nouveau")}>${ICON.plus}${T("New video", "Nouvelle vidéo")}</a>
+      <a class="primary" href="#/nouveau"${cur("/nouveau")}>${T("+ New video", "+ Nouvelle vidéo")}</a>
       <a class="tuto" href="#/tuto"${cur("/tuto")}>${ICON.tuto}${T("How it works", "Comment ça marche")}</a>
       <a href="#/"${cur("/")}>${ICON.home}${T("Home", "Accueil")}</a>
       <a href="#/videos"${cur("/videos")}>${ICON.video}${T("Videos", "Vidéos")}${aPointer ? `<span class="badge">${aPointer}</span>` : ""}</a>
@@ -323,68 +323,119 @@
   }
 
   // ================================================================ ACCUEIL
+  let arreterCamera = null;
   function accueilView() {
-    const M = D.matchs, nom = D.profil.nom;
+    const M = D.matchs, nom = D.profil.nom, prenom = nom ? nom.split(" ")[0] : "";
     const aPointer = M.filter((x) => x.etat === "a_pointer");
     const enCours = M.filter((x) => ["video_recue", "preparation", "pointage_fini", "calcul", "controle"].includes(x.etat));
     const finis = M.filter((x) => x.etat === "termine");
-    const heure = new Date().getHours();
-    const salut = heure < 18 ? T("Hello", "Bonjour") : T("Good evening", "Bonsoir");
+    const salut = new Date().getHours() < 18 ? T("Hello", "Bonjour") : T("Good evening", "Bonsoir");
+    const cur = aPointer[0] || M.filter((x) => EN_COURS.includes(x.etat)).sort((a, b) => new Date(b.maj_le) - new Date(a.maj_le))[0];
+    const iCur = cur ? ETATS.findIndex((x) => x.k === cur.etat) : -1;
+    const actifs = D.joueurs.filter((x) => x.actif), indispo = actifs.filter((x) => x.statut && x.statut !== "disponible"), capitaine = actifs.find((x) => x.capitaine);
     const etapes = [
       [!!(D.profil.nom && D.profil.club), T("Complete your profile", "Complétez votre profil"), "#/parametres"],
       [!!D.equipe, T("Create your team", "Créez votre équipe"), "#/equipe"],
-      [D.joueurs.length >= 11, T("Add at least 11 players", "Ajoutez au moins 11 joueurs"), "#/equipe"],
+      [actifs.length >= 11, T("Register at least 11 players", "Inscrivez au moins 11 joueurs"), "#/equipe"],
       [D.plans.length > 0, T("Write your first game plan", "Écrivez votre premier plan de jeu"), "#/plan/nouveau"],
       [M.length > 0, T("Send your first video", "Envoyez votre première vidéo"), "#/nouveau"],
       [M.some((x) => ["pointage_fini", "calcul", "controle", "termine"].includes(x.etat)), T("Set up the pitch of a match", "Réglez le terrain d'un match"), "#/videos"],
     ];
     const faits = etapes.filter((e) => e[0]).length;
-    const cur = aPointer[0] || M.filter((x) => EN_COURS.includes(x.etat)).sort((a, b) => new Date(b.maj_le) - new Date(a.maj_le))[0];
-    const iCur = cur ? ETATS.findIndex((x) => x.k === cur.etat) : -1;
-    const planCur = cur && cur.plan && cur.plan.systeme ? cur.plan : null;
-    const board = cur ? `<div class="board">
-        <div class="board-bar"><span class="live"><i></i>${cur.etat === "a_pointer" ? T("Your turn", "À vous") : T("In progress", "En cours")}</span><span><b>${esc(cur.titre)}</b>${score(cur) ? " · " + esc(score(cur)) : ""}</span><span>${pct(cur.etat)} %</span></div>
-        <div class="board-grid"><div class="board-pitch">${pitchSVG((planCur && planCur.systeme) || (D.equipe && D.equipe.systeme) || "4-3-3", planCur && planCur.composition && planCur.composition.length ? planCur.composition : null)}</div>
-          <div class="board-info"><div><span class="label">${esc([fmtDate(cur.date_match, { day: "numeric", month: "short" }), cur.competition].filter(Boolean).join(" · ") || T("Current match", "Match en cours"))}</span><h3>${esc(etatNom(cur.etat))}</h3></div>
-            <ul class="board-steps">${ETATS.slice(1).map((e, j) => `<li class="${j + 1 < iCur ? "on" : j + 1 === iCur ? "now" : ""}"><i></i>${esc(T(e.en, e.fr))}</li>`).join("")}</ul>
-            ${cur.etat === "a_pointer" ? `<a class="btn btn-accent btn-sm" href="/app/pointage?match=${cur.id}">${T("Set up the pitch →", "Régler le terrain →")}</a>` : `<a class="btn btn-line btn-sm" style="color:#e9eeeb;border-color:var(--dark-line)" href="#/match/${cur.id}">${T("Open the match →", "Ouvrir le match →")}</a>`}</div></div></div>`
-      : `<div class="board"><div class="board-bar"><span class="live" style="color:var(--dark-muted)"><i style="background:var(--dark-muted);animation:none"></i>${T("Idle", "Au calme")}</span><span>${T("No analysis in progress", "Aucune analyse en cours")}</span><span></span></div>
-        <div class="board-grid"><div class="board-pitch">${pitchSVG((D.equipe && D.equipe.systeme) || "4-3-3", null)}</div>
-          <div class="board-empty"><span class="label" style="color:var(--dark-muted)">${T("Next step", "Prochaine étape")}</span><h3>${T("Send your next match", "Envoyez votre prochain match")}</h3>
-            <p>${T("Ciprio measures your game plan over the whole match, for the team and each player.", "Ciprio mesure votre plan de jeu sur tout le match, pour l'équipe et chaque joueur.")}</p>
-            <a class="btn btn-accent btn-sm" style="justify-self:start" href="#/nouveau">${T("+ New video", "+ Nouvelle vidéo")}</a></div></div></div>`;
-    const spark = (n) => `<span class="spark" aria-hidden="true">${Array.from({ length: 6 }, (_, k) => `<i class="${k < n ? "on" : ""}" style="height:${6 + ((k * 7) % 16)}px"></i>`).join("")}</span>`;
-    view.innerHTML = `
-      <div class="hero-home">
-        <div class="co-card hello"><div><span class="label">${esc(fmtDate(new Date(), { weekday: "long", day: "numeric", month: "long" }))}</span>
-            <h1>${nom ? `${salut},<br><span>${esc(nom.split(" ")[0])}.</span>` : T("Welcome.", "Bienvenue.")}</h1></div>
-          <p>${D.equipe ? esc([D.equipe.nom, D.equipe.club, D.equipe.categorie].filter(Boolean).join(" · ")) : T("Create your team to get started.", "Créez votre équipe pour commencer.")}${aPointer.length ? `<br><b style="color:var(--accent)">${aPointer.length > 1 ? T(`${aPointer.length} matches are waiting for you.`, `${aPointer.length} matchs vous attendent.`) : T("A match is waiting for your pointing.", "Un match attend votre pointage.")}</b>` : ""}</p>
-          <div class="ctas"><a class="btn btn-ink btn-sm" href="#/nouveau">${T("+ New video", "+ Nouvelle vidéo")}</a><a class="btn btn-line btn-sm" href="#/plans">${T("Game plans", "Plans de jeu")}</a></div></div>
-        ${board}
-      </div>
-      <div class="facts" style="margin-bottom:18px">
+
+    // ---- vue caméra, toute la largeur : vert = une analyse avance, blanc = rien en cours
+    const dateTxt = fmtDate(new Date(), { weekday: "long", day: "numeric", month: "long" });
+    const stage = cur ? `
+      <section class="stage vert" aria-label="${T("Analysis in progress", "Analyse en cours")}">
+        <canvas id="cam" aria-hidden="true"></canvas>
+        <div class="stage-top">
+          <div class="st-l"><span class="label"><i class="dot"></i>${esc(prenom ? `${salut}, ${prenom}` : salut)} · ${esc(dateTxt)}</span>
+            <h1>${cur.etat === "a_pointer" ? T("Your turn: set up the pitch", "À vous : réglez le terrain") : T("Analysis in progress…", "Analyse en cours…")}</h1>
+            <p><b>${esc(cur.titre)}</b>${score(cur) ? " · " + esc(score(cur)) : ""} — ${T("step", "étape")} ${iCur + 1}/${ETATS.length} : ${esc(etatNom(cur.etat))}</p></div>
+          <div class="st-r"><b class="st-pct">${pct(cur.etat)}<small>%</small></b>
+            ${cur.etat === "a_pointer" ? `<a class="btn btn-ink btn-sm" href="/app/pointage?match=${cur.id}">${T("Set up the pitch →", "Régler le terrain →")}</a>` : `<a class="btn btn-ink btn-sm" href="#/match/${cur.id}">${T("Open the match →", "Ouvrir le match →")}</a>`}</div>
+          <div class="st-bar"><i style="width:${pct(cur.etat)}%"></i></div>
+          <ol class="st-steps">${ETATS.map((e, j) => `<li class="${j < iCur ? "on" : j === iCur ? "now" : ""}">${esc(T(e.en, e.fr))}</li>`).join("")}</ol>
+        </div>
+      </section>`
+      : `
+      <section class="stage blanc" aria-label="${T("No video yet", "Aucune vidéo en cours")}">
+        <canvas id="cam" aria-hidden="true"></canvas>
+        <div class="stage-top">
+          <div class="st-l"><span class="label">${esc(prenom ? `${salut}, ${prenom}` : salut)} · ${esc(dateTxt)}</span>
+            <h1>${M.length ? T("No analysis in progress.", "Aucune analyse en cours.") : T("You haven't sent a video yet.", "Vous n'avez pas encore chargé de vidéo.")}</h1>
+            <p>${T("Start with the “New video” button: Ciprio takes care of the rest.", "Commencez avec le bouton « Nouvelle vidéo » : Ciprio s'occupe du reste.")}</p></div>
+          <div class="st-r"><a class="btn btn-ink" href="#/nouveau">${T("New video", "Nouvelle vidéo")}</a></div>
+        </div>
+      </section>`;
+
+    // ---- vos derniers rapports : détaillés, match par match
+    const carteRapport = (m) => {
+      const p = m.plan || {}, nc = (p.consignes || []).length, ni = (p.individuelles || []).length, compo = (p.composition || []).filter(Boolean).length;
+      const pret = m.etat === "termine";
+      const vic = m.score_nous != null && m.score_eux != null ? (m.score_nous > m.score_eux ? ["V", T("Win", "Victoire")] : m.score_nous < m.score_eux ? ["D", T("Loss", "Défaite")] : ["N", T("Draw", "Nul")]) : null;
+      return `<a class="rcard" href="#/match/${m.id}/${pret ? "rapport" : "suivi"}">
+        <div class="rc-top"><span class="label">${esc([fmtDate(m.date_match, { day: "numeric", month: "short", year: "numeric" }), m.competition].filter(Boolean).join(" · ") || T("Match", "Match"))}</span>${pret ? `<span class="pill done">${T("Report", "Rapport")}</span>` : pill(m.etat)}</div>
+        <div class="rc-mid"><h3>${esc(m.titre)}</h3>${score(m) ? `<span class="rc-score">${esc(score(m))}${vic ? `<i class="res res-${vic[0]}" title="${vic[1]}">${vic[0]}</i>` : ""}</span>` : ""}</div>
+        <dl class="rc-dl">
+          <div><dt>${T("Game plan", "Plan de jeu")}</dt><dd>${p.nom ? esc(p.nom) : "—"}</dd></div>
+          <div><dt>${T("System", "Système")}</dt><dd>${esc(p.systeme || "—")}</dd></div>
+          <div><dt>${T("Instructions", "Consignes")}</dt><dd>${nc + ni ? `${nc} ${T("team", "coll.")} · ${ni} ${T("indiv.", "indiv.")}` : "—"}</dd></div>
+          <div><dt>${T("Line-up", "Composition")}</dt><dd>${compo ? `${compo}/11` : "—"}</dd></div>
+          <div><dt>${T("Venue", "Lieu")}</dt><dd>${m.domicile == null ? "—" : m.domicile ? T("Home", "Domicile") : T("Away", "Extérieur")}</dd></div>
+        </dl>
+        ${pret ? "" : `<div class="rc-prog"><span class="frise-txt">${esc(etatNom(m.etat))}</span><span class="bar"><i style="width:${pct(m.etat)}%"></i></span></div>`}
+        <span class="rc-go">${pret ? T("Open the report", "Ouvrir le rapport") : T("Follow the analysis", "Suivre l'analyse")} →</span></a>`;
+    };
+    const rapports = finis.length ? finis.slice(0, 3) : M.slice(0, 3);
+    const blocRapports = `<section class="home-sec">
+        <div class="sec-h"><div><span class="label">${T("Analysis", "Analyse")}</span><h2>${finis.length ? T("Your latest reports", "Vos derniers rapports") : T("Your reports to come", "Vos prochains rapports")}</h2></div><a class="btn btn-line btn-sm" href="#/rapports">${T("All reports", "Tous les rapports")}</a></div>
+        ${rapports.length ? `<div class="rgrid">${rapports.map(carteRapport).join("")}</div>`
+          : `<div class="co-card empty">${ICON.report}<p><b style="color:var(--ink)">${T("No report yet", "Pas encore de rapport")}</b></p><p class="small">${T("Each analysed match gives a report: your game plan measured, team and player by player.", "Chaque match analysé donne un rapport : votre plan de jeu mesuré, pour l'équipe et joueur par joueur.")}</p><a class="btn btn-ink btn-sm" href="#/nouveau">${T("Send a video", "Envoyer une vidéo")}</a></div>`}
+      </section>`;
+
+    view.innerHTML = `${stage}
+      <div class="facts" style="margin-bottom:30px">
         <a href="#/videos/tous"><span class="k">${T("Videos", "Vidéos")}</span><b>${M.length}</b><small>${T("sent to Ciprio", "envoyées à Ciprio")}</small><span class="go">→</span></a>
         <a href="#/videos/${aPointer.length ? "pour_vous" : "en_cours"}"><span class="k">${T("In progress", "En cours")}</span><b>${enCours.length + aPointer.length}</b><small>${aPointer.length ? T(`${aPointer.length} waiting for you`, `dont ${aPointer.length} pour vous`) : T("being analysed", "en analyse")}</small><span class="go">→</span></a>
-        <a href="#/rapports"><span class="k">${T("Reports", "Rapports")}</span><b>${finis.length}</b><small>${T("analyses completed", "analyses terminées")}</small><span class="go">→</span>${spark(finis.length)}</a>
-        <a href="#/equipe"><span class="k">${T("Squad", "Effectif")}</span><b>${D.joueurs.filter((x) => x.actif).length}</b><small>${D.joueurs.filter((x) => x.actif && x.statut && x.statut !== "disponible").length ? T(`${D.joueurs.filter((x) => x.actif && x.statut && x.statut !== "disponible").length} unavailable`, `dont ${D.joueurs.filter((x) => x.actif && x.statut && x.statut !== "disponible").length} indisponible(s)`) : T("active players", "joueurs actifs")}</small><span class="go">→</span></a>
+        <a href="#/rapports"><span class="k">${T("Reports", "Rapports")}</span><b>${finis.length}</b><small>${T("analyses completed", "analyses terminées")}</small><span class="go">→</span></a>
+        <a href="#/equipe"><span class="k">${T("Squad", "Effectif")}</span><b>${actifs.length}</b><small>${indispo.length ? T(`${indispo.length} unavailable`, `dont ${indispo.length} indisponible(s)`) : T("active players", "joueurs actifs")}</small><span class="go">→</span></a>
       </div>
+      ${blocRapports}
       <div class="grid g-main">
         <div class="stack">
           <div class="co-card">
             <div class="card-h"><div><span class="label">${T("Activity", "Activité")}</span><h2>${T("Latest videos", "Dernières vidéos")}</h2></div><a class="btn btn-line btn-sm" href="#/videos">${T("See all", "Tout voir")}</a></div>
-            ${M.length ? `<div class="mlist">${M.slice(0, 4).map(mrow).join("")}</div>` : `<div class="empty">${ICON.video}<p>${T("No video yet.", "Aucune vidéo pour l'instant.")}</p><a class="btn btn-ink btn-sm" href="#/nouveau">${T("Send a video", "Envoyer une vidéo")}</a></div>`}
+            ${M.length ? `<div class="mlist">${M.slice(0, 5).map(mrow).join("")}</div>` : `<div class="empty">${ICON.video}<p>${T("No video yet.", "Aucune vidéo pour l'instant.")}</p></div>`}
           </div>
-          <a class="co-card tuto-card" href="#/tuto"><div><span class="k">${T("New to Ciprio?", "Nouveau sur Ciprio ?")}</span><h2>${T("How it works, step by step", "Comment ça marche, étape par étape")}</h2>
-            <p>${T("From your squad to the report: what to do, what Ciprio does, how long it takes.", "De votre effectif au rapport : ce que vous faites, ce que fait Ciprio, combien de temps ça prend.")}</p></div><span class="btn">${T("Open the tutorial →", "Ouvrir le tutoriel →")}</span></a>
+          <div class="co-card">
+            <div class="card-h"><div><span class="label">${T("Preparation", "Préparation")}</span><h2>${T("Your game plans", "Vos plans de jeu")}</h2></div><a class="btn btn-line btn-sm" href="#/plan/nouveau">${T("New plan", "Nouveau plan")}</a></div>
+            ${D.plans.length ? `<div class="plist">${D.plans.slice(0, 4).map((p) => `<a href="#/plan/${p.id}"><span class="sys">${esc(p.systeme || "—")}</span><b>${esc(p.nom)}</b><span class="muted small">${(p.consignes || []).length} ${T("team instr.", "consignes coll.")} · ${(p.individuelles || []).length} ${T("indiv.", "indiv.")} · ${(p.composition || []).filter(Boolean).length}/11</span><span class="go">→</span></a>`).join("")}</div>`
+              : `<p class="muted small">${T("No game plan yet: write your instructions once, reuse them match after match.", "Pas encore de plan : écrivez vos consignes une fois, réutilisez-les match après match.")}</p>`}
+          </div>
         </div>
         <div class="stack">
           <div class="co-card">
-            <div class="card-h"><div><span class="label">${T("Set-up", "Mise en route")}</span><h2>${T("Getting started", "Pour bien démarrer")}</h2></div><span class="pill ${faits === etapes.length ? "done" : ""}">${faits} / ${etapes.length}</span></div>
-            <div class="meter"><i style="width:${Math.round((faits / etapes.length) * 100)}%"></i></div>
-            <ul class="check">${etapes.map(([ok, t, h]) => `<li class="${ok ? "ok" : ""}"><a href="${h}"><i>${ok ? "✓" : ""}</i>${esc(t)}</a></li>`).join("")}</ul>
+            <div class="card-h"><div><span class="label">${T("Squad", "Effectif")}</span><h2>${D.equipe ? esc(D.equipe.nom) : T("Your team", "Votre équipe")}</h2></div><a class="btn btn-line btn-sm" href="#/equipe">${T("Manage", "Gérer")}</a></div>
+            ${D.equipe ? `<dl class="dl">
+                <dt>${T("Available", "Disponibles")}</dt><dd><b>${actifs.length - indispo.length}</b> / ${actifs.length}</dd>
+                <dt>${T("Usual system", "Système habituel")}</dt><dd>${esc(D.equipe.systeme || "—")}</dd>
+                <dt>${T("Captain", "Capitaine")}</dt><dd>${capitaine ? esc(nomJoueur(capitaine)) : "—"}</dd>
+                <dt>${T("Category", "Catégorie")}</dt><dd>${esc([D.equipe.categorie, D.equipe.niveau].filter(Boolean).join(" · ") || "—")}</dd></dl>
+              ${indispo.length ? `<div class="indispo"><span class="label">${T("Unavailable", "Indisponibles")}</span>${indispo.map((j) => `<span class="ij"><b>${esc(nomJoueur(j))}</b><span class="tag st-${j.statut}">${esc(statut(j.statut))}</span></span>`).join("")}</div>` : ""}`
+              : `<p class="muted small">${T("Create your team and register your players: Ciprio uses their numbers to recognise them.", "Créez votre équipe et inscrivez vos joueurs : Ciprio se sert de leurs numéros pour les reconnaître.")}</p><div class="co-actions" style="margin-top:14px"><a class="btn btn-ink btn-sm" href="#/equipe">${T("Create my team", "Créer mon équipe")}</a></div>`}
           </div>
+          ${faits < etapes.length ? `<div class="co-card">
+            <div class="card-h"><div><span class="label">${T("Set-up", "Mise en route")}</span><h2>${T("Getting started", "Pour bien démarrer")}</h2></div><span class="pill">${faits} / ${etapes.length}</span></div>
+            <div class="meter" style="margin-top:0"><i style="width:${Math.round((faits / etapes.length) * 100)}%"></i></div>
+            <ul class="check">${etapes.map(([ok, t, h]) => `<li class="${ok ? "ok" : ""}"><a href="${h}"><i>${ok ? "✓" : ""}</i>${esc(t)}</a></li>`).join("")}</ul>
+          </div>` : ""}
+          <a class="co-card tuto-card" href="#/tuto"><div><span class="k">${T("Guide", "Guide")}</span><h2>${T("How it works, step by step", "Comment ça marche, étape par étape")}</h2>
+            <p>${T("From your squad to the report: what you do, what Ciprio does.", "De votre effectif au rapport : ce que vous faites, ce que fait Ciprio.")}</p></div><span class="btn btn-sm">${T("Open →", "Ouvrir →")}</span></a>
         </div>
       </div>`;
+    if (arreterCamera) arreterCamera();
+    if (window.CIPRIO_CAMERA) arreterCamera = CIPRIO_CAMERA.monter($("cam"), { mode: cur ? "vert" : "blanc" });
   }
 
   // ================================================================ NOUVELLE VIDÉO
