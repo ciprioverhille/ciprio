@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 80" preserveAspectRatio="xMidYMid slice">
+  <rect width="160" height="80" fill="#0c100e"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity=".14" stroke-width=".6">
+    <rect x="8" y="10" width="144" height="60"/><line x1="80" y1="10" x2="80" y2="70"/><circle cx="80" cy="40" r="9"/>
+    <rect x="8" y="24" width="16" height="32"/><rect x="136" y="24" width="16" height="32"/>
+  </g>
+  <rect x="86" y="17" width="48" height="46" rx="2" fill="#12a150" fill-opacity=".06" stroke="#12a150" stroke-opacity=".6" stroke-width=".5" stroke-dasharray="1.6 1.2"/>
+  <rect x="96" y="35" width="11" height="10" fill="#d49a00" fill-opacity=".1" stroke="#d49a00" stroke-opacity=".6" stroke-width=".5" stroke-dasharray="1.2 1"/>
+  <g fill="#5d6661">
+    <circle cx="128" cy="22" r="2.1"/><circle cx="130" cy="34" r="2.1"/><circle cx="130" cy="46" r="2.1"/><circle cx="128" cy="58" r="2.1"/>
+    <circle cx="114" cy="24" r="2.1"/><circle cx="116" cy="35" r="2.1"/><circle cx="116" cy="45" r="2.1"/><circle cx="114" cy="56" r="2.1"/>
+    <circle cx="91" cy="34" r="2.1"/><circle cx="91" cy="46" r="2.1"/>
+  </g>
+  <g fill="#e9eeeb" fill-opacity=".45"><circle cx="60" cy="24" r="2.2"/><circle cx="58" cy="56" r="2.2"/><circle cx="48" cy="40" r="2.2"/><circle cx="101" cy="40" r="2.2"/></g>
+  <circle cx="68" cy="40" r="2.2" fill="#e9eeeb"/>
+  <g fill="none" stroke="#12a150" stroke-width=".7" stroke-linecap="round">
+    <line x1="88" y1="67" x2="132" y2="67"/><line x1="88" y1="65.6" x2="88" y2="68.4"/><line x1="132" y1="65.6" x2="132" y2="68.4"/>
+    <line x1="138" y1="19" x2="138" y2="61"/><line x1="136.6" y1="19" x2="139.4" y2="19"/><line x1="136.6" y1="61" x2="139.4" y2="61"/>
+  </g>
+  <g fill="none" stroke="#ffffff" stroke-opacity=".5" stroke-width=".5"><rect x="8" y="2.8" width="22" height="4.4" rx=".6"/></g>
+  <g fill="#ffffff" fill-opacity=".55"><rect x="10" y="4.4" width="2" height="1.2" rx=".3"/><rect x="14" y="4.4" width="7" height="1.2" rx=".3"/></g>
+  <g fill="#12a150"><rect x="134" y="73.4" width="5" height="3.2" rx=".5"/><rect x="141" y="73.4" width="5" height="3.2" rx=".5"/></g>
+  <rect x="148" y="73.4" width="4" height="3.2" rx=".5" fill="#ffffff" fill-opacity=".1"/>
+</svg>

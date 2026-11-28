@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://ciprio.ai/</loc><lastmod>2026-10-31</lastmod><priority>1.0</priority></url>
-  <url><loc>https://ciprio.ai/blog</loc><lastmod>2026-11-21</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ciprio.ai/blog</loc><lastmod>2026-11-28</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ciprio.ai/blog/football-team-compactness</loc><lastmod>2026-11-28</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/blog/how-to-scout-an-opponent-football</loc><lastmod>2026-11-21</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/blog/measurable-individual-instructions-football</loc><lastmod>2026-11-14</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/blog/how-to-run-a-football-video-debrief</loc><lastmod>2026-11-07</lastmod><priority>0.7</priority></url>
@@ -15,7 +16,8 @@
   <url><loc>https://ciprio.ai/terms</loc><lastmod>2026-10-31</lastmod><priority>0.3</priority></url>
   <url><loc>https://ciprio.ai/legal</loc><lastmod>2026-10-31</lastmod><priority>0.3</priority></url>
   <url><loc>https://ciprio.ai/fr</loc><lastmod>2026-11-03</lastmod><priority>1.0</priority></url>
-  <url><loc>https://ciprio.ai/fr/blog</loc><lastmod>2026-11-21</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ciprio.ai/fr/blog</loc><lastmod>2026-11-28</lastmod><priority>0.8</priority></url>
+  <url><loc>https://ciprio.ai/fr/blog/football-team-compactness</loc><lastmod>2026-11-28</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/fr/blog/how-to-scout-an-opponent-football</loc><lastmod>2026-11-21</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/fr/blog/measurable-individual-instructions-football</loc><lastmod>2026-11-14</lastmod><priority>0.7</priority></url>
   <url><loc>https://ciprio.ai/fr/blog/how-to-run-a-football-video-debrief</loc><lastmod>2026-11-07</lastmod><priority>0.7</priority></url>
